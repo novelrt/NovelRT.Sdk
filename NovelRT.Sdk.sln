@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NovelRT.Sdk", "NovelRT.Sdk\NovelRT.Sdk.csproj", "{EB445B77-910E-42CE-B0C3-C7B3E841F42A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NovelRT.Sdk.Console", "NovelRT.Sdk.Console\NovelRT.Sdk.Console.csproj", "{FDE66B57-1676-4E34-9BC4-FA773EF25836}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EB445B77-910E-42CE-B0C3-C7B3E841F42A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB445B77-910E-42CE-B0C3-C7B3E841F42A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EB445B77-910E-42CE-B0C3-C7B3E841F42A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB445B77-910E-42CE-B0C3-C7B3E841F42A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FDE66B57-1676-4E34-9BC4-FA773EF25836}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FDE66B57-1676-4E34-9BC4-FA773EF25836}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FDE66B57-1676-4E34-9BC4-FA773EF25836}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FDE66B57-1676-4E34-9BC4-FA773EF25836}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
