@@ -28,6 +28,9 @@
       <None Update="TemplateFiles\CMakeTemplate\include\PROJECT_NAME\DeleteMe.txt">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <None Update="TemplateFiles\conanfile.py">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>

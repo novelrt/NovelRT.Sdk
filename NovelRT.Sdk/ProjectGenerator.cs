@@ -4,18 +4,29 @@ public static class ProjectGenerator
 {
     public static async Task GenerateAsync(string newProjectPath)
     {
-        var templatePath = "TemplateFiles" + Path.DirectorySeparatorChar + "CMakeTemplate";
-        await CopyDirectoryAsync(templatePath, newProjectPath, true);
+        var templateFilesPath = "TemplateFiles";
+        var cmakeTemplatePath = templateFilesPath + Path.DirectorySeparatorChar + "CMakeTemplate";
+        
+        await CopyDirectoryAsync(cmakeTemplatePath, newProjectPath, true);
         var projectName = new DirectoryInfo(newProjectPath).Name;
         var projectDescription = $"{projectName} game";
         var projectVersion = "0.0.1";
         var novelrtVersion = "0.0.1";
 
         await DeletePlaceholderFilesAsync(new DirectoryInfo(newProjectPath));
-        await OverwriteCMakeTemplateVariableDataAsync(new DirectoryInfo(newProjectPath), projectName!, newProjectPath, projectDescription, projectVersion, novelrtVersion);
+        await OverwriteCMakeTemplateVariableDataAsync(new DirectoryInfo(newProjectPath), projectName!, newProjectPath,
+            projectDescription, projectVersion, novelrtVersion);
+
+        var conanfilePath = newProjectPath + Path.DirectorySeparatorChar + "conanfile.py";
+        File.Copy(templateFilesPath + Path.DirectorySeparatorChar + "conanfile.py", conanfilePath);
+        
+        Console.WriteLine($"Generating {conanfilePath}");
+        var conanfileContents = await File.ReadAllTextAsync(conanfilePath);
+        conanfileContents = ApplyProjectContextToFile(projectName!, projectDescription, projectVersion, novelrtVersion, conanfileContents);
+        await File.WriteAllTextAsync(conanfilePath, conanfileContents);
     }
 
-    static async Task DeletePlaceholderFilesAsync(DirectoryInfo projectPath)
+    private static async Task DeletePlaceholderFilesAsync(DirectoryInfo projectPath)
     {
         foreach (DirectoryInfo subDir in projectPath.GetDirectories())
         {
@@ -29,7 +40,7 @@ public static class ProjectGenerator
         }
     }
 
-    static async Task OverwriteCMakeTemplateVariableDataAsync(DirectoryInfo rootDir, string projectName, string projectPath, string projectDescription, string projectVersion, string novelrtVersion)
+    private static async Task OverwriteCMakeTemplateVariableDataAsync(DirectoryInfo rootDir, string projectName, string projectPath, string projectDescription, string projectVersion, string novelrtVersion)
     {
         DirectoryInfo[] directories = rootDir.GetDirectories();
 
@@ -51,17 +62,24 @@ public static class ProjectGenerator
         {
             Console.WriteLine($"Generating {cmakeFile}");
             string fileContents = await File.ReadAllTextAsync(cmakeFile.FullName);
-            fileContents = fileContents.Replace("###PROJECT_NAME###", projectName);
-            fileContents = fileContents.Replace("###PROJECT_DESCRIPTION###", projectDescription);
-            fileContents = fileContents.Replace("###PROJECT_VERSION###", projectVersion);
-            fileContents = fileContents.Replace("###NOVELRT_VERSION###", novelrtVersion);
+            fileContents = ApplyProjectContextToFile(projectName, projectDescription, projectVersion, novelrtVersion, fileContents);
             fileContents = fileContents.Replace($"{projectName}_NOVELRT_VERSION",
                 $"{projectName}_NOVELRT_VERSION".ToUpperInvariant());
             await File.WriteAllTextAsync(cmakeFile.FullName, fileContents);
         }
     }
-    
-    static async Task CopyDirectoryAsync(string sourceDir, string destinationDir, bool recursive)
+
+    private static string ApplyProjectContextToFile(string projectName, string projectDescription, string projectVersion,
+        string novelrtVersion, string fileContents)
+    {
+        fileContents = fileContents.Replace("###PROJECT_NAME###", projectName);
+        fileContents = fileContents.Replace("###PROJECT_DESCRIPTION###", projectDescription);
+        fileContents = fileContents.Replace("###PROJECT_VERSION###", projectVersion);
+        fileContents = fileContents.Replace("###NOVELRT_VERSION###", novelrtVersion);
+        return fileContents;
+    }
+
+    private static async Task CopyDirectoryAsync(string sourceDir, string destinationDir, bool recursive)
     {
         var dir = new DirectoryInfo(sourceDir);
 
