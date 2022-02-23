@@ -24,11 +24,12 @@ public class NewCommand : ICommandHandler
         Arity = ArgumentArity.ExactlyOne
     };
 
-    public Task<int> InvokeAsync(InvocationContext context)
+    public async Task<int> InvokeAsync(InvocationContext context)
     {
         var result = context.ParseResult.GetValueForOption(OutputDirectory);
         System.Console.WriteLine($"Generating in {result}");
+        await ProjectGenerator.GenerateAsync(result!);
         
-        return Task.FromResult(0);
+        return 0;
     }
 }

@@ -6,4 +6,28 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <ItemGroup>
+      <None Update="TemplateFiles\CMakeTemplate\cmake\CopyBuildProducts.cmake">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="TemplateFiles\CMakeTemplate\cmake\CopyDirectoryRaw.cmake">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="TemplateFiles\CMakeTemplate\src\PROJECT_NAME\CMakeLists.txt">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="TemplateFiles\CMakeTemplate\src\PROJECT_NAME\main.cpp">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="TemplateFiles\CMakeTemplate\src\CMakeLists.txt">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="TemplateFiles\CMakeTemplate\CMakeLists.txt">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="TemplateFiles\CMakeTemplate\include\PROJECT_NAME\DeleteMe.txt">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
 </Project>
