@@ -1,17 +1,11 @@
 from conans import ConanFile, CMake
-import os
 
 class ###PROJECT_NAME###Conan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
-    generators = "cmake_find_package", "cmake_paths"
+    generators = "cmake", "cmake_find_package_multi"
     requires = [
-        ("NovelRT/###NOVELRT_VERSION###")]
-    default_options = {
-        "NovelRT:documentation": False,
-        "NovelRT:buildtests":False,
-        "NovelRT:buildsamples":False,
-        "NovelRT:packagemode":True
-    }
+        ("novelrt/###NOVELRT_VERSION###")
+    ]
 
     def build(self):
         cmake = CMake(self)
@@ -19,9 +13,7 @@ class ###PROJECT_NAME###Conan(ConanFile):
         cmake.build()
 
     def imports(self):
-        self.copy("*.dll", dst="bin", src="bin")
-
-    def test(self):
-        os.chdir("bin")
-        self.run(".%sexample" % os.sep)
+        if self.settings.os == "Windows":
+            self.copy("*.dll", "bin", "bin")
+        self.copy("*.spv", "bin/Resources/Shaders", "bin/Resources/Shaders")
  
