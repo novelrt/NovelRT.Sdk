@@ -57,3 +57,4 @@ target_link_libraries(###PROJECT_NAME###_Game
 )
 
 copy_directory_raw(###PROJECT_NAME###_Game ${CMAKE_SOURCE_DIR}/Resources)
+
