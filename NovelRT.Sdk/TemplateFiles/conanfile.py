@@ -17,3 +17,4 @@ class ###PROJECT_NAME###Conan(ConanFile):
             self.copy("*.dll", "bin", "bin")
         self.copy("*.spv", "bin/Resources/Shaders", "bin/Resources/Shaders")
  
+ 
