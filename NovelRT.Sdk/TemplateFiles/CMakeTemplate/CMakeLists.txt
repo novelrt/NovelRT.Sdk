@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.19 FATAL_ERROR)
+﻿cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
 cmake_policy(SET CMP0091 NEW)
 
@@ -26,6 +26,7 @@ set(###PROJECT_NAME###_NOVELRT_VERSION ###NOVELRT_VERSION### CACHE STRING "Novel
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(GAME_RESOURCES "${CMAKE_SOURCE_DIR}/Resources")
 
-include(${CMAKE_BINARY_DIR}/conan_paths.cmake)
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+conan_basic_setup(TARGETS)
 
 add_subdirectory(src)

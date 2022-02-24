@@ -13,6 +13,9 @@
       <None Update="TemplateFiles\CMakeTemplate\cmake\CopyDirectoryRaw.cmake">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <None Update="TemplateFiles\CMakeTemplate\Resources\DeleteMe.txt">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
       <None Update="TemplateFiles\CMakeTemplate\src\PROJECT_NAME\CMakeLists.txt">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
