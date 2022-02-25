@@ -59,4 +59,7 @@ target_link_libraries(App
 set_target_properties(App PROPERTIES OUTPUT_NAME "###PROJECT_NAME###")
 
 copy_directory_raw(App "${GAME_RESOURCES}")
-copy_directory_raw(App "${CMAKE_SOURCE_DIR}/deps")
+if(WIN32)
+  copy_directory_raw(App "${CMAKE_SOURCE_DIR}/deps")
+endif()
+
