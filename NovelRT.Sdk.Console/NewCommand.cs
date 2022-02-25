@@ -43,7 +43,7 @@ public class NewCommand : ICommandHandler
         }
         catch (IOException e)
         {
-            await System.Console.Error.WriteLineAsync("Error: Project files already exist in this directory! Aborting!");
+            await System.Console.Error.WriteLineAsync("Error: Project files already exist in this directory. Aborting.");
             return 1;
         }
         return 0;

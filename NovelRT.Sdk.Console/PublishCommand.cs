@@ -13,22 +13,37 @@ public class PublishCommand : ICommandHandler
         };
         
         Command.AddArgument(OutputDirectory);
+        Command.AddOption(ProjectDirectory);
     }
 
-    public static Argument<string> OutputDirectory { get; } = new Argument<string>("output directory",
+    public static Argument<string> OutputDirectory { get; } = new("output directory",
         "The directory to store the release build contents in.")
     {
         Arity = ArgumentArity.ExactlyOne
     };
-    
+
+    public static Option<string> ProjectDirectory { get; } = new(new[] { "-p", "--project" },
+        Directory.GetCurrentDirectory,
+        "The target project directory to publish from. Assumes current working directory if one is not specified.");
+
     public static Command Command { get; }
     
-    public Task<int> InvokeAsync(InvocationContext context)
+    public async Task<int> InvokeAsync(InvocationContext context)
     {
         var path = context.ParseResult.GetValueForArgument(OutputDirectory);
-        
+        var projectDir = context.ParseResult.GetValueForOption(ProjectDirectory);
         System.Console.WriteLine($"Publishing to {path}");
 
-        return Task.FromResult(0);
+        try
+        {
+            await Publisher.PublishAsync(projectDir!, path);
+        }
+        catch (IOException e)
+        {
+            await System.Console.Error.WriteLineAsync("Error: The target directory is not empty. Aborting.");
+            return 1;
+        }
+        
+        return 0;
     }
 }
