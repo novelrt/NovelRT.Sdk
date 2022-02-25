@@ -1,40 +1,43 @@
-﻿namespace NovelRT.Sdk;
+﻿using System.Reflection;
+
+namespace NovelRT.Sdk;
 
 public static class ProjectGenerator
 {
-    public static async Task GenerateAsync(string newProjectPath)
+    public static async Task GenerateAsync(string newProjectPath, Version novelrtVersion)
     {
-        var templateFilesPath = "TemplateFiles";
-        var cmakeTemplatePath = templateFilesPath + Path.DirectorySeparatorChar + "CMakeTemplate";
+        var templateFilesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TemplateFiles");
+        var cmakeTemplatePath = Path.Combine(templateFilesPath , "CMakeTemplate");
         
         await CopyDirectoryAsync(cmakeTemplatePath, newProjectPath, true);
         var projectName = new DirectoryInfo(newProjectPath).Name;
-        var projectDescription = $"{projectName} game";
-        var projectVersion = "0.0.1";
-        var novelrtVersion = "0.0.1";
+        var projectDescription = $"{projectName} app";
+        var projectVersionString = "0.0.1";
+        var novelrtVersionString = novelrtVersion.ToString(3);
 
-        await DeletePlaceholderFilesAsync(new DirectoryInfo(newProjectPath));
+        await DeletePlaceholderFilesWithDirectoryLoggingAsync(new DirectoryInfo(newProjectPath), projectName);
         await OverwriteCMakeTemplateVariableDataAsync(new DirectoryInfo(newProjectPath), projectName!, newProjectPath,
-            projectDescription, projectVersion, novelrtVersion);
+            projectDescription, projectVersionString, novelrtVersionString);
 
         var conanfilePath = newProjectPath + Path.DirectorySeparatorChar + "conanfile.py";
         File.Copy(templateFilesPath + Path.DirectorySeparatorChar + "conanfile.py", conanfilePath);
         
         Console.WriteLine($"Generating {conanfilePath}");
         var conanfileContents = await File.ReadAllTextAsync(conanfilePath);
-        conanfileContents = ApplyProjectContextToFile(projectName!, projectDescription, projectVersion, novelrtVersion, conanfileContents);
+        conanfileContents = ApplyProjectContextToFile(projectName!, projectDescription, projectVersionString, novelrtVersionString, conanfileContents);
         await File.WriteAllTextAsync(conanfilePath, conanfileContents);
     }
 
-    private static async Task DeletePlaceholderFilesAsync(DirectoryInfo projectPath)
+    private static async Task DeletePlaceholderFilesWithDirectoryLoggingAsync(DirectoryInfo projectPath, string projectName)
     {
         foreach (DirectoryInfo subDir in projectPath.GetDirectories())
         {
-            await DeletePlaceholderFilesAsync(subDir);
+            await DeletePlaceholderFilesWithDirectoryLoggingAsync(subDir, projectName);
             var placeholderFiles = subDir.GetFiles("DeleteMe.txt");
 
             foreach (var placeholderFile in placeholderFiles)
             {
+                Console.WriteLine($"Generating {placeholderFile.DirectoryName!.Replace("PROJECT_NAME", projectName)}");
                 placeholderFile.Delete();
             }
         }

@@ -13,6 +13,7 @@ public class NewCommand : ICommandHandler
         };
 
         Command.AddOption(OutputDirectory);
+        Command.AddOption(NovelRTVersion);
     }
 
     public static Command Command { get; }
@@ -24,12 +25,27 @@ public class NewCommand : ICommandHandler
         Arity = ArgumentArity.ExactlyOne
     };
 
+    public static Option<Version> NovelRTVersion { get; } =
+        new(new[] { "-v", "--version" },
+            () => new Version(0, 0, 1), "The NovelRT Engine version to use for this project. Assumes latest if not provided.")
+        {
+            Arity = ArgumentArity.ExactlyOne
+        };
+
     public async Task<int> InvokeAsync(InvocationContext context)
     {
-        var result = context.ParseResult.GetValueForOption(OutputDirectory);
-        System.Console.WriteLine($"Generating in {result}");
-        await ProjectGenerator.GenerateAsync(result!);
-        
+        var outputDirectory = context.ParseResult.GetValueForOption(OutputDirectory);
+        var novelrtVersion = context.ParseResult.GetValueForOption(NovelRTVersion);
+        System.Console.WriteLine($"Generating in {outputDirectory} with NovelRT version {novelrtVersion!.ToString(3)}");
+        try
+        {
+            await ProjectGenerator.GenerateAsync(outputDirectory!, novelrtVersion!);
+        }
+        catch (IOException e)
+        {
+            await System.Console.Error.WriteLineAsync("Error: Project files already exist in this directory! Aborting!");
+            return 1;
+        }
         return 0;
     }
 }
