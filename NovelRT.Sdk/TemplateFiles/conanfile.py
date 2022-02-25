@@ -2,7 +2,7 @@ from conans import ConanFile, CMake
 
 class ###PROJECT_NAME###Conan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
-    generators = "cmake", "cmake_find_package_multi"
+    generators = "cmake_paths", "cmake_find_package"
     requires = [
         ("novelrt/###NOVELRT_VERSION###")
     ]
@@ -14,7 +14,7 @@ class ###PROJECT_NAME###Conan(ConanFile):
 
     def imports(self):
         if self.settings.os == "Windows":
-            self.copy("*.dll", "bin", "bin")
-        self.copy("*.spv", "bin/Resources/Shaders", "bin/Resources/Shaders")
+            self.copy("*.dll", "../deps", "bin")
+        self.copy("*.spv", "../Resources/Shaders", "bin/Resources/Shaders")
  
  

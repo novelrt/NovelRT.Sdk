@@ -1,5 +1,4 @@
-﻿include(CopyBuildProducts)
-include(CopyDirectoryRaw)
+﻿include(CopyDirectoryRaw)
 
 find_package(novelrt ${###PROJECT_NAME###_NOVELRT_VERSION} REQUIRED)
 
@@ -7,18 +6,18 @@ set(SOURCES
     main.cpp
   )
 
-add_executable(###PROJECT_NAME### ${SOURCES})
+add_executable(###PROJECT_NAME###_Game ${SOURCES})
 
-target_compile_features(###PROJECT_NAME### PUBLIC cxx_std_17)
+target_compile_features(###PROJECT_NAME###_Game PUBLIC cxx_std_17)
 
-target_include_directories(###PROJECT_NAME###
+target_include_directories(###PROJECT_NAME###_Game
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
 
 if(MSVC)
-  target_compile_options(###PROJECT_NAME###
+  target_compile_options(###PROJECT_NAME###_Game
     PRIVATE
       /W4
       /WX
@@ -26,7 +25,7 @@ if(MSVC)
       /MP
   )
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  target_compile_options(###PROJECT_NAME###
+  target_compile_options(###PROJECT_NAME###_Game
     PRIVATE
       -pedantic
       -pedantic-errors
@@ -37,7 +36,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
       -Wno-padded
   )
 else()
-  target_compile_options(###PROJECT_NAME###
+  target_compile_options(###PROJECT_NAME###_Game
     PRIVATE
       -pedantic
       -pedantic-errors
@@ -52,11 +51,10 @@ else()
   )
 endif()
 
-target_link_libraries(###PROJECT_NAME###
+target_link_libraries(###PROJECT_NAME###_Game
   PRIVATE
     novelrt::novelrt
 )
 
-copy_build_products(###PROJECT_NAME###
-                    DEPENDENCY Resources
-                    TARGET_LOCATION $<TARGET_FILE_DIR:###PROJECT_NAME###>/Resources)
+copy_directory_raw(###PROJECT_NAME###_Game "${GAME_RESOURCES}")
+copy_directory_raw(###PROJECT_NAME###_Game "${CMAKE_SOURCE_DIR}/deps")
