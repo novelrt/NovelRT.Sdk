@@ -2,7 +2,7 @@ from conans import ConanFile, CMake
 
 class ###PROJECT_NAME###Conan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
-    generators = "cmake_paths", "cmake_find_package"
+    generators = "cmake_find_package", "cmake_paths"
     requires = [
         ("novelrt/###NOVELRT_VERSION###")
     ]
