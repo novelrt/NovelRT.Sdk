@@ -16,5 +16,5 @@ class ###PROJECT_NAME###Conan(ConanFile):
         if self.settings.os == "Windows":
             self.copy("*.dll", "../deps", "bin")
         self.copy("*.spv", "../Resources/Shaders", "bin/Resources/Shaders")
- 
- 
+
+        

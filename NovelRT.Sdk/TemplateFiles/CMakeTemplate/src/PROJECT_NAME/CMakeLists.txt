@@ -6,18 +6,18 @@ set(SOURCES
     main.cpp
   )
 
-add_executable(###PROJECT_NAME###_Game ${SOURCES})
+add_executable(App ${SOURCES})
 
-target_compile_features(###PROJECT_NAME###_Game PUBLIC cxx_std_17)
+target_compile_features(App PUBLIC cxx_std_17)
 
-target_include_directories(###PROJECT_NAME###_Game
+target_include_directories(App
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
 
 if(MSVC)
-  target_compile_options(###PROJECT_NAME###_Game
+  target_compile_options(App
     PRIVATE
       /W4
       /WX
@@ -25,7 +25,7 @@ if(MSVC)
       /MP
   )
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  target_compile_options(###PROJECT_NAME###_Game
+  target_compile_options(App
     PRIVATE
       -pedantic
       -pedantic-errors
@@ -36,7 +36,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
       -Wno-padded
   )
 else()
-  target_compile_options(###PROJECT_NAME###_Game
+  target_compile_options(App
     PRIVATE
       -pedantic
       -pedantic-errors
@@ -51,10 +51,12 @@ else()
   )
 endif()
 
-target_link_libraries(###PROJECT_NAME###_Game
+target_link_libraries(App
   PRIVATE
     novelrt::novelrt
 )
 
-copy_directory_raw(###PROJECT_NAME###_Game "${GAME_RESOURCES}")
-copy_directory_raw(###PROJECT_NAME###_Game "${CMAKE_SOURCE_DIR}/deps")
+set_target_properties(App PROPERTIES OUTPUT_NAME "###PROJECT_NAME###")
+
+copy_directory_raw(App "${GAME_RESOURCES}")
+copy_directory_raw(App "${CMAKE_SOURCE_DIR}/deps")
