@@ -1,9 +1,39 @@
-﻿using System.Reflection;
+﻿using System.Diagnostics;
+using System.Reflection;
 
 namespace NovelRT.Sdk;
 
 public static class ProjectGenerator
 {
+    public static async Task ConfigureAsync(string projectLocation, string projectOutputDir, BuildType buildType)
+    {
+        await Process.Start($"cmake -S {projectLocation} -B {projectOutputDir}").WaitForExitAsync();
+    }
+    
+    public static async Task GenerateDebugAsync(string newProjectPath, string novelrtVersion)
+    {
+        var templateFilesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TemplateFiles");
+        var cmakeTemplatePath = Path.Combine(templateFilesPath , "CMakeTemplate");
+        
+        await CopyDirectoryAsync(cmakeTemplatePath, newProjectPath, true);
+        var projectName = new DirectoryInfo(newProjectPath).Name;
+        var projectDescription = $"{projectName} app";
+        var projectVersionString = "0.0.1";
+        var novelrtVersionString = novelrtVersion;
+
+        await DeletePlaceholderFilesWithDirectoryLoggingAsync(new DirectoryInfo(newProjectPath), projectName);
+        await OverwriteCMakeTemplateVariableDataAsync(new DirectoryInfo(newProjectPath), projectName!, newProjectPath,
+            projectDescription, projectVersionString, novelrtVersionString);
+
+        var conanfilePath = newProjectPath + Path.DirectorySeparatorChar + "conanfile.py";
+        File.Copy(templateFilesPath + Path.DirectorySeparatorChar + "conanfile.py", conanfilePath);
+        
+        Console.WriteLine($"Generating {conanfilePath}");
+        var conanfileContents = await File.ReadAllTextAsync(conanfilePath);
+        conanfileContents = ApplyProjectContextToFile(projectName!, projectDescription, projectVersionString, novelrtVersionString, conanfileContents);
+        await File.WriteAllTextAsync(conanfilePath, conanfileContents);
+    }
+    
     public static async Task GenerateAsync(string newProjectPath, Version novelrtVersion)
     {
         var templateFilesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TemplateFiles");

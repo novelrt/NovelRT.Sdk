@@ -10,16 +10,17 @@ public class Publisher
       {
          Directory.Delete(tempBuildDirectory, true);
       }
-
-      Directory.CreateDirectory(tempBuildDirectory);
-
-      await ProjectBuilder.BuildAsync(tempBuildDirectory, BuildType.Release);
-
+      
       if (Directory.Exists(outputDirectory) && (Directory.GetFiles(outputDirectory).Length > 0 || Directory.GetDirectories(outputDirectory).Length > 0))
       {
          throw new IOException("The publish output directory is not empty.");
       }
       
+      await ProjectGenerator.ConfigureAsync(projectDirectory, tempBuildDirectory, BuildType.Release);
+
+      await ProjectBuilder.BuildAsync(tempBuildDirectory);
+
       Directory.Move(tempBuildDirectory, outputDirectory);
+      Directory.Delete(tempBuildDirectory, true);
    }
 }
