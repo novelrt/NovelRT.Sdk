@@ -1,9 +1,14 @@
-﻿namespace NovelRT.Sdk;
+﻿using Serilog;
+
+namespace NovelRT.Sdk;
 
 public class Publisher
 {
-   public static async Task PublishAsync(string projectDirectory, string outputDirectory)
+    private static ILogger? _logger;
+   public static async Task PublishAsync(string projectDirectory, string outputDirectory, ILogger logger)
    {
+      _logger = logger;
+
       string tempBuildDirectory = Path.Combine(projectDirectory, "PublishOutput");
 
       if (Directory.Exists(tempBuildDirectory))

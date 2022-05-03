@@ -1,10 +1,13 @@
-﻿using System.CommandLine;
+﻿using Serilog;
+using Serilog.Events;
+using System.CommandLine;
 using System.CommandLine.Invocation;
 
 namespace NovelRT.Sdk.Console;
 
 public class PublishCommand : ICommandHandler
 {
+    private static bool _verbose;
     static PublishCommand()
     {
         Command = new Command("publish", "creates and deploys a release build to a specified location.")
@@ -14,6 +17,7 @@ public class PublishCommand : ICommandHandler
         
         Command.AddArgument(OutputDirectory);
         Command.AddOption(ProjectDirectory);
+        _verbose = false;
     }
 
     public static Argument<string> OutputDirectory { get; } = new("output directory",
@@ -30,17 +34,25 @@ public class PublishCommand : ICommandHandler
     
     public async Task<int> InvokeAsync(InvocationContext context)
     {
+        _verbose = context.ParseResult.GetValueForOption(GlobalOptions.VerboseMode);
+        if (_verbose)
+        {
+            Globals.Verbosity.MinimumLevel = LogEventLevel.Debug;
+        }
+
         var path = context.ParseResult.GetValueForArgument(OutputDirectory);
         var projectDir = context.ParseResult.GetValueForOption(ProjectDirectory);
         System.Console.WriteLine($"Publishing to {path}");
 
         try
         {
-            await Publisher.PublishAsync(projectDir!, path);
+            await Publisher.PublishAsync(projectDir!, path, Log.Logger);
         }
         catch (IOException e)
         {
             await System.Console.Error.WriteLineAsync("Error: The target directory is not empty. Aborting.");
+            if (Globals.Verbosity.MinimumLevel == LogEventLevel.Verbose)
+                Log.Logger.Verbose($"{e.Message}\n{e.StackTrace}");
             return 1;
         }
         
