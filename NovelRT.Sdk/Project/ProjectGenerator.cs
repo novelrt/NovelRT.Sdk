@@ -106,9 +106,11 @@ public static class ProjectGenerator
             fileContents = ApplyProjectContextToFile(projectName, projectDescription, projectVersion, novelrtPath, fileContents);
 
             var path = novelrtPath.Replace("\\", "/");
-            string cmakePath = cmakeFile.FullName.Replace(cmakeFile.Name, "build").Replace("\\", "/");
+            var includePath = Path.Combine(path, "include");
+            string cmakePath = cmakeFile.FullName.Replace(cmakeFile.Name, "build/engine").Replace("\\", "/");
             fileContents = fileContents.Replace($"###NOVELRT_ENGINE_SUBDIR###",
-                $"add_subdirectory(\"{path}\" \"{cmakePath}\")");
+                $"include_directories(\"{includePath}\")"+
+                $"\nadd_subdirectory(\"{path}\" \"{cmakePath}\")");
 
             await File.WriteAllTextAsync(cmakeFile.FullName, fileContents);
         }
@@ -124,22 +126,23 @@ public static class ProjectGenerator
         if (_fromSource && includeInterop)
         {
             fileContents = fileContents.Replace("###NOVELRT_ENGINE_LIB###", "Engine\nInterop");
-            fileContents = fileContents.Replace("###NOVELRT_ENGINE_SOURCE_CBP###", $"copy_build_products({projectName}" +
+            fileContents = fileContents.Replace("###NOVELRT_ENGINE_SOURCE_CBP###", $"copy_build_products(App" +
                 "\n\tDEPENDENCY Resources" +
-                $"\n\tTARGET_LOCATION $<TARGET_FILE_DIR:{projectName}>/Resources" +
+                $"\n\tTARGET_LOCATION $<TARGET_FILE_DIR:App>/Resources" +
                 "\n\n\tDEPENDENCY Engine" +
-                $"TARGET_LOCATION $<TARGET_FILE_DIR:{projectName}>)" +
+                $"TARGET_LOCATION $<TARGET_FILE_DIR:App>)" +
                 "\n\n\tDEPENDENCY Interop" +
-                $"TARGET_LOCATION $<TARGET_FILE_DIR:{projectName}>)");
+                $"TARGET_LOCATION $<TARGET_FILE_DIR:App>)");
         }
         else if (_fromSource)
         {
             fileContents = fileContents.Replace("###NOVELRT_ENGINE_LIB###", "Engine");
-            fileContents = fileContents.Replace("###NOVELRT_ENGINE_SOURCE_CBP###", $"copy_build_products({projectName}" +
+            fileContents = fileContents.Replace("###NOVELRT_ENGINE_SOURCE_CBP###", $"copy_build_products(App" +
                 "\n\tDEPENDENCY Resources" +
-                $"\n\tTARGET_LOCATION $<TARGET_FILE_DIR:{projectName}>/Resources" +
+                $"\n\tTARGET_LOCATION $<TARGET_FILE_DIR:App>/Resources" +
                 "\n\n\tDEPENDENCY Engine" +
-                $"TARGET_LOCATION $<TARGET_FILE_DIR:{projectName}>)");
+                $"\n\tTARGET_LOCATION $<TARGET_FILE_DIR:App>)");
+            fileContents = fileContents.Replace("###NOVELRT_ENGINE_SRC_DEPENDENCIES###", $"add_dependencies(App Resources)\n");
         }
         else if (includeInterop)
         {

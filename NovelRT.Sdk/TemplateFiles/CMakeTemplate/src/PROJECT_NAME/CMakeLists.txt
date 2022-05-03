@@ -8,6 +8,7 @@ set(SOURCES
 
 add_executable(App ${SOURCES})
 
+###NOVELRT_ENGINE_SRC_DEPENDENCIES###
 target_compile_features(App PUBLIC cxx_std_17)
 
 target_include_directories(App
@@ -62,5 +63,6 @@ copy_directory_raw(App "${GAME_RESOURCES}")
 if(WIN32)
   copy_directory_raw(App "${CMAKE_SOURCE_DIR}/deps")
 endif()
+
 ###NOVELRT_ENGINE_SOURCE_CBP###
 
