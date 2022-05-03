@@ -10,8 +10,6 @@ namespace NovelRT.Sdk
         public static string InformationalMessageTemplate = "{Message:lj}{NewLine}{Exception}";
         public static Version MinimumSupportedVersion = new Version(0, 1, 0);
 
-        public static string Provider = "https://api.github.com/";
-
         public static ILogger SdkLog = new LoggerConfiguration().WriteTo
             .Console(Serilog.Events.LogEventLevel.Debug, outputTemplate: InformationalMessageTemplate)
             .MinimumLevel.ControlledBy(Verbosity).CreateLogger();

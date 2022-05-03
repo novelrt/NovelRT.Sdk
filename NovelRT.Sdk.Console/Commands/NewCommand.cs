@@ -1,4 +1,5 @@
 ﻿using NovelRT.Sdk.Console.Util;
+using NovelRT.Sdk.Project;
 using Serilog;
 using Serilog.Events;
 using System.CommandLine;
@@ -64,9 +65,9 @@ public class NewCommand : ICommandHandler
         string? engineLocation = context.ParseResult.GetValueForOption(EngineLocation);
         string? outputDirectory = context.ParseResult.GetValueForOption(OutputDirectory);
         string novelrtVersion = "";
+        bool? shouldConfigure = context.ParseResult.GetValueForOption(LaunchCMakeConfigure);
         //var novelrtVersion = context.ParseResult.GetValueForOption(NovelRTVersion);
-        
-        //var shouldConfigure = context.ParseResult.GetValueForOption(LaunchCMakeConfigure);
+        bool willConfigure = (shouldConfigure != null) ? (bool)shouldConfigure : false;
 
         if (!string.IsNullOrEmpty(engineLocation))
         {
@@ -149,7 +150,7 @@ public class NewCommand : ICommandHandler
         if (!string.IsNullOrEmpty(outputDirectory))
         {
             Log.Logger.Debug("Setting output directory...");
-            outputDirectory = outputDirectory.TrimStart();
+            outputDirectory = Path.GetFullPath(outputDirectory.TrimStart());
         }
         else
         {
@@ -162,6 +163,19 @@ public class NewCommand : ICommandHandler
             Log.Logger.Information($"Generating project in {outputDirectory} using source build of NovelRT...");
 
             //Generate project with overrides for from-source builds.
+            await ProjectGenerator.GenerateFromSourceAsync(outputDirectory, _engineLocation);
+            Log.Logger.Information("Successfully generated new NovelRT project!");
+
+            if (willConfigure)
+            {
+                var buildPath = Path.GetFullPath(Path.Combine(outputDirectory, "build"));
+                //Run conan commands for engine
+                await ConanHandler.ConfigInstallAsync();
+                await ConanHandler.InstallAsync(_engineLocation, buildPath, BuildType.Debug);
+
+                //Configure project + NovelRT
+                await ProjectBuilder.ConfigureAsync(outputDirectory, buildPath, BuildType.Debug);
+            }
         }
         else
         {
@@ -196,6 +210,7 @@ public class NewCommand : ICommandHandler
         //        BuildType.Release, _verbose);
         //}
 
+        
         return 0;
     }
 }

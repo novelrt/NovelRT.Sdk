@@ -1,6 +1,6 @@
 ﻿include(CopyDirectoryRaw)
 
-find_package(novelrt ${###PROJECT_NAME###_NOVELRT_VERSION} REQUIRED)
+#find_package(novelrt ${###PROJECT_NAME###_NOVELRT_VERSION} REQUIRED)
 
 set(SOURCES
     main.cpp
@@ -53,7 +53,7 @@ endif()
 
 target_link_libraries(App
   PRIVATE
-    novelrt::novelrt
+    ###NOVELRT_ENGINE_LIB###
 )
 
 set_target_properties(App PROPERTIES OUTPUT_NAME "###PROJECT_NAME###")
@@ -62,4 +62,5 @@ copy_directory_raw(App "${GAME_RESOURCES}")
 if(WIN32)
   copy_directory_raw(App "${CMAKE_SOURCE_DIR}/deps")
 endif()
+###NOVELRT_ENGINE_SOURCE_CBP###
 

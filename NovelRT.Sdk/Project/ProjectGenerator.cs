@@ -5,32 +5,11 @@ namespace NovelRT.Sdk;
 
 public static class ProjectGenerator
 {
-    public static async Task ConfigureAsync(string projectLocation, string projectOutputDir, BuildType buildType, bool verboseMode = false)
+    private static bool _fromSource = false;
+
+    public static async Task GenerateFromSourceAsync(string newProjectPath, string novelrtPath)
     {
-        var args = $"-S { projectLocation } -B { projectOutputDir }";
-        if (verboseMode)
-            args += " --verbose";
-
-        var start = new ProcessStartInfo
-        {
-            FileName = "cmake",
-            Arguments = args,
-            RedirectStandardError = true,
-            RedirectStandardOutput = true,
-            UseShellExecute = true
-        };
-
-        var proc = new Process();
-        proc.StartInfo = start;
-        proc.OutputDataReceived += new DataReceivedEventHandler((o, e) => SdkLog.Information(e.Data));
-        proc.ErrorDataReceived += new DataReceivedEventHandler((o, e) => SdkLog.Error(e.Data));
-
-        proc.Start();
-        await proc.WaitForExitAsync();
-    }
-    
-    public static async Task GenerateDebugAsync(string newProjectPath, string novelrtVersion)
-    {
+        _fromSource = true;
         var templateFilesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TemplateFiles");
         var cmakeTemplatePath = Path.Combine(templateFilesPath , "CMakeTemplate");
 
@@ -40,19 +19,19 @@ public static class ProjectGenerator
         var projectName = new DirectoryInfo(newProjectPath).Name;
         var projectDescription = $"{projectName} app";
         var projectVersionString = "0.0.1";
-        var novelrtVersionString = novelrtVersion;
+        //var novelrtVersionString = novelrtVersion;
 
         await DeletePlaceholderFilesWithDirectoryLoggingAsync(new DirectoryInfo(newProjectPath), projectName);
         await OverwriteCMakeTemplateVariableDataAsync(new DirectoryInfo(newProjectPath), projectName!, newProjectPath,
-            projectDescription, projectVersionString, novelrtVersionString);
+            projectDescription, projectVersionString, novelrtPath);
 
-        var conanfilePath = newProjectPath + Path.DirectorySeparatorChar + "conanfile.py";
-        File.Copy(templateFilesPath + Path.DirectorySeparatorChar + "conanfile.py", conanfilePath);
+        //var conanfilePath = newProjectPath + Path.DirectorySeparatorChar + "conanfile.py";
+        //File.Copy(templateFilesPath + Path.DirectorySeparatorChar + "conanfile.py", conanfilePath);
         
-        SdkLog.Information($"Generating {conanfilePath}");
-        var conanfileContents = await File.ReadAllTextAsync(conanfilePath);
-        conanfileContents = ApplyProjectContextToFile(projectName!, projectDescription, projectVersionString, novelrtVersionString, conanfileContents);
-        await File.WriteAllTextAsync(conanfilePath, conanfileContents);
+        //SdkLog.Information($"Generating {conanfilePath}");
+        //var conanfileContents = await File.ReadAllTextAsync(conanfilePath);
+        //conanfileContents = ApplyProjectContextToFile(projectName!, projectDescription, projectVersionString, novelrtVersionString, conanfileContents);
+        //await File.WriteAllTextAsync(conanfilePath, conanfileContents);
     }
     
     public static async Task GenerateAsync(string newProjectPath, Version novelrtVersion)
@@ -100,7 +79,7 @@ public static class ProjectGenerator
         }
     }
 
-    private static async Task OverwriteCMakeTemplateVariableDataAsync(DirectoryInfo rootDir, string projectName, string projectPath, string projectDescription, string projectVersion, string novelrtVersion)
+    private static async Task OverwriteCMakeTemplateVariableDataAsync(DirectoryInfo rootDir, string projectName, string projectPath, string projectDescription, string projectVersion, string novelrtPath)
     {
         DirectoryInfo[] directories = rootDir.GetDirectories();
 
@@ -112,7 +91,7 @@ public static class ProjectGenerator
                 dir.MoveTo(newPath);
             }
             
-            await OverwriteCMakeTemplateVariableDataAsync(dir, projectName, projectPath, projectDescription, projectVersion, novelrtVersion);
+            await OverwriteCMakeTemplateVariableDataAsync(dir, projectName, projectPath, projectDescription, projectVersion, novelrtPath);
         }
 
         var cmakeFiles = rootDir.GetFiles("*.txt");
@@ -121,29 +100,64 @@ public static class ProjectGenerator
         foreach (var cmakeFile in cmakeFiles)
         {
             SdkLog.Information($"Generating {cmakeFile}");
+
             string fileContents = await File.ReadAllTextAsync(cmakeFile.FullName);
-            fileContents = ApplyProjectContextToFile(projectName, projectDescription, projectVersion, novelrtVersion, fileContents);
-            fileContents = fileContents.Replace($"{projectName}_NOVELRT_VERSION",
-                $"{projectName}_NOVELRT_VERSION".ToUpperInvariant());
+
+            fileContents = ApplyProjectContextToFile(projectName, projectDescription, projectVersion, novelrtPath, fileContents);
+
+            var path = novelrtPath.Replace("\\", "/");
+            string cmakePath = cmakeFile.FullName.Replace(cmakeFile.Name, "build").Replace("\\", "/");
+            fileContents = fileContents.Replace($"###NOVELRT_ENGINE_SUBDIR###",
+                $"add_subdirectory(\"{path}\" \"{cmakePath}\")");
+
             await File.WriteAllTextAsync(cmakeFile.FullName, fileContents);
         }
     }
 
     private static string ApplyProjectContextToFile(string projectName, string projectDescription, string projectVersion,
-        string novelrtVersion, string fileContents)
+        string novelrtVersion, string fileContents, bool includeInterop = false)
     {
         fileContents = fileContents.Replace("###PROJECT_NAME###", projectName);
         fileContents = fileContents.Replace("###PROJECT_DESCRIPTION###", projectDescription);
         fileContents = fileContents.Replace("###PROJECT_VERSION###", projectVersion);
-        fileContents = fileContents.Replace("###NOVELRT_VERSION###", novelrtVersion);
+
+        if (_fromSource && includeInterop)
+        {
+            fileContents = fileContents.Replace("###NOVELRT_ENGINE_LIB###", "Engine\nInterop");
+            fileContents = fileContents.Replace("###NOVELRT_ENGINE_SOURCE_CBP###", $"copy_build_products({projectName}" +
+                "\n\tDEPENDENCY Resources" +
+                $"\n\tTARGET_LOCATION $<TARGET_FILE_DIR:{projectName}>/Resources" +
+                "\n\n\tDEPENDENCY Engine" +
+                $"TARGET_LOCATION $<TARGET_FILE_DIR:{projectName}>)" +
+                "\n\n\tDEPENDENCY Interop" +
+                $"TARGET_LOCATION $<TARGET_FILE_DIR:{projectName}>)");
+        }
+        else if (_fromSource)
+        {
+            fileContents = fileContents.Replace("###NOVELRT_ENGINE_LIB###", "Engine");
+            fileContents = fileContents.Replace("###NOVELRT_ENGINE_SOURCE_CBP###", $"copy_build_products({projectName}" +
+                "\n\tDEPENDENCY Resources" +
+                $"\n\tTARGET_LOCATION $<TARGET_FILE_DIR:{projectName}>/Resources" +
+                "\n\n\tDEPENDENCY Engine" +
+                $"TARGET_LOCATION $<TARGET_FILE_DIR:{projectName}>)");
+        }
+        else if (includeInterop)
+        {
+            fileContents = fileContents.Replace("###NOVELRT_ENGINE_LIB###", "NovelRT::Engine\nNovelRT::Interop");
+            fileContents = fileContents.Replace("###NOVELRT_ENGINE_SOURCE_CBP###", "");
+        }
+        else
+        {
+            fileContents = fileContents.Replace("###NOVELRT_ENGINE_LIB###", "NovelRT::Engine");
+            fileContents = fileContents.Replace("###NOVELRT_ENGINE_SOURCE_CBP###", "");
+        }
+
+        //fileContents = fileContents.Replace("###NOVELRT_VERSION###", novelrtVersion);
         return fileContents;
     }
 
     private static async Task CopyDirectoryAsync(string sourceDir, string destinationDir, bool recursive)
     {
-        SdkLog.Debug("CopyDirectoryAsync - ProjectGenerator");
-        SdkLog.Debug($"Source Directory: {sourceDir}");
-        SdkLog.Debug($"Destination Directory: {destinationDir}");
         var dir = new DirectoryInfo(sourceDir);
         if (!dir.Exists)
             throw new DirectoryNotFoundException($"Source directory not found: {dir.FullName}");
@@ -158,7 +172,7 @@ public static class ProjectGenerator
             string targetFilePath = Path.Combine(destinationDir, file.Name);
             var copied = file.CopyTo(targetFilePath);
             if(SdkLog != null)
-                SdkLog.Debug($"\tCopied {copied.FullName}");
+                SdkLog.Debug($"Copied {copied.FullName}");
         }
 
         if (recursive)

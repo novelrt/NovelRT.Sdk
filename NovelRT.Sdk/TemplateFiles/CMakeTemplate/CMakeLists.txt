@@ -21,11 +21,14 @@ if(WIN32)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 endif()
 
-set(###PROJECT_NAME###_NOVELRT_VERSION ###NOVELRT_VERSION### CACHE STRING "NovelRT version")
+#set(###PROJECT_NAME###_NOVELRT_VERSION ###NOVELRT_VERSION### CACHE STRING "NovelRT version")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(GAME_RESOURCES "${CMAKE_SOURCE_DIR}/Resources")
 
 include(${CMAKE_BINARY_DIR}/conan_paths.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/CopyBuildProducts.cmake)
+
+###NOVELRT_ENGINE_SUBDIR###
 
 add_subdirectory(src)

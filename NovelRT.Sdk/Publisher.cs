@@ -21,7 +21,7 @@ public class Publisher
          throw new IOException("The publish output directory is not empty.");
       }
       
-      await ProjectGenerator.ConfigureAsync(projectDirectory, tempBuildDirectory, BuildType.Release);
+      //await ProjectGenerator.ConfigureAsync(projectDirectory, tempBuildDirectory, BuildType.Release);
 
       await ProjectBuilder.BuildAsync(tempBuildDirectory);
 
