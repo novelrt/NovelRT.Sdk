@@ -18,7 +18,7 @@ rootCommand.AddCommand(PublishCommand.Command);
 
 if (Debugger.IsAttached)
 {
-    var arg = new string[] { "new", "-o ./testappnet", "--verbose" };
+    var arg = new string[] { "new", "--engine-location", @"D:\test\NovelRT", "--verbose" };
     var rc = rootCommand.Invoke(arg);
     Log.CloseAndFlush();
     return rc;

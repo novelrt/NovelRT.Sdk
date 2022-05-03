@@ -13,7 +13,7 @@ namespace NovelRT.Sdk
         private static RestClient _client = new RestClient()
             .AddDefaultHeader(KnownHeaders.Accept, "application/vnd.github.v3+json");
 
-        public static async Task<int> SelectEngineVersion()
+        public static async Task<string> SelectEngineVersion()
         {
             int inc = 1;
             Dictionary<int, Release> releases = new Dictionary<int, Release>();
@@ -61,10 +61,10 @@ namespace NovelRT.Sdk
                 else
                 {
                     SdkLog.Error("Something went wrong when downloading the release!");
-                    return -1;
+                    return "";
                 }
             }
-            return -1;
+            return "";
         }
 
         public static async Task<int> ListFoundVersions()
@@ -210,7 +210,7 @@ namespace NovelRT.Sdk
             }
         }
 
-        private static async Task<int> ExtractRelease(string tag, string filepath, string pathToExtract = "")
+        private static async Task<string> ExtractRelease(string tag, string filepath, string pathToExtract = "")
         {
             SdkLog.Debug($"Extracting {filepath}...");
             string path;
@@ -236,14 +236,14 @@ namespace NovelRT.Sdk
                 SdkLog.Debug("Unzipping successful!");
 
 
-                return 0;
+                return path;
             }
             catch (Exception e)
             {
                 SdkLog.Error("Error when extracting release!");
                 SdkLog.Error(e.Message);
                 SdkLog.Debug(e.StackTrace);
-                return -1;
+                return "";
             }
         }
 
