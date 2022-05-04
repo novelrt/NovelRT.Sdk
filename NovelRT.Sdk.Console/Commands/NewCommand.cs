@@ -163,7 +163,7 @@ public class NewCommand : ICommandHandler
             Log.Logger.Information($"Generating project in {outputDirectory} using source build of NovelRT...");
 
             //Generate project with overrides for from-source builds.
-            await ProjectGenerator.GenerateFromSourceAsync(outputDirectory, _engineLocation);
+            var project = await ProjectGenerator.GenerateFromSourceAsync(outputDirectory, _engineLocation);
             Log.Logger.Information("Successfully generated new NovelRT project!");
 
             if (willConfigure)
@@ -174,7 +174,19 @@ public class NewCommand : ICommandHandler
                 await ConanHandler.InstallAsync(_engineLocation, buildPath, BuildType.Debug);
 
                 //Configure project + NovelRT
-                await ProjectBuilder.ConfigureAsync(outputDirectory, buildPath, BuildType.Debug);
+                await ProjectBuilder.ConfigureAsync(outputDirectory, buildPath, BuildType.Debug, _fromSourceBuild);
+                await ProjectBuilder.BuildAsync(buildPath);
+                if (await ProjectBuilder.ConfirmEngineBuildSuccessful(buildPath, project))
+                {
+                    Log.Logger.Information("Successfully generated and built project!");
+                    return 0;
+                }
+                else
+                {
+                    Log.Logger.Error($"Sommething went wrong while trynig to build NovelRT and the new project.");
+                    return -1;
+                }    
+
             }
         }
         else

@@ -1,5 +1,6 @@
 using Serilog;
 using Serilog.Core;
+using Serilog.Sinks.SystemConsole.Themes;
 
 namespace NovelRT.Sdk
 {
@@ -11,7 +12,8 @@ namespace NovelRT.Sdk
         public static Version MinimumSupportedVersion = new Version(0, 1, 0);
 
         public static ILogger SdkLog = new LoggerConfiguration().WriteTo
-            .Console(Serilog.Events.LogEventLevel.Debug, outputTemplate: InformationalMessageTemplate)
+            .Console(Serilog.Events.LogEventLevel.Debug, outputTemplate: InformationalMessageTemplate, 
+            applyThemeToRedirectedOutput: true)
             .MinimumLevel.ControlledBy(Verbosity).CreateLogger();
 
         

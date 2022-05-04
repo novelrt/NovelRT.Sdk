@@ -7,7 +7,7 @@ public static class ProjectGenerator
 {
     private static bool _fromSource = false;
 
-    public static async Task GenerateFromSourceAsync(string newProjectPath, string novelrtPath)
+    public static async Task<string> GenerateFromSourceAsync(string newProjectPath, string novelrtPath)
     {
         _fromSource = true;
         var templateFilesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TemplateFiles");
@@ -25,16 +25,10 @@ public static class ProjectGenerator
         await OverwriteCMakeTemplateVariableDataAsync(new DirectoryInfo(newProjectPath), projectName!, newProjectPath,
             projectDescription, projectVersionString, novelrtPath);
 
-        //var conanfilePath = newProjectPath + Path.DirectorySeparatorChar + "conanfile.py";
-        //File.Copy(templateFilesPath + Path.DirectorySeparatorChar + "conanfile.py", conanfilePath);
-        
-        //SdkLog.Information($"Generating {conanfilePath}");
-        //var conanfileContents = await File.ReadAllTextAsync(conanfilePath);
-        //conanfileContents = ApplyProjectContextToFile(projectName!, projectDescription, projectVersionString, novelrtVersionString, conanfileContents);
-        //await File.WriteAllTextAsync(conanfilePath, conanfileContents);
+        return projectName;
     }
     
-    public static async Task GenerateAsync(string newProjectPath, Version novelrtVersion)
+    public static async Task<string> GenerateAsync(string newProjectPath, Version novelrtVersion)
     {
         string projectPath;
         if (newProjectPath != null)
@@ -62,6 +56,7 @@ public static class ProjectGenerator
         var conanfileContents = await File.ReadAllTextAsync(conanfilePath);
         conanfileContents = ApplyProjectContextToFile(projectName!, projectDescription, projectVersionString, novelrtVersionString, conanfileContents);
         await File.WriteAllTextAsync(conanfilePath, conanfileContents);
+        return projectName;
     }
 
     private static async Task DeletePlaceholderFilesWithDirectoryLoggingAsync(DirectoryInfo projectPath, string projectName)
@@ -106,11 +101,13 @@ public static class ProjectGenerator
             fileContents = ApplyProjectContextToFile(projectName, projectDescription, projectVersion, novelrtPath, fileContents);
 
             var path = novelrtPath.Replace("\\", "/");
-            var includePath = Path.Combine(path, "include");
+            var includePath = Path.Combine(path, "include").Replace("\\", "/");
             string cmakePath = cmakeFile.FullName.Replace(cmakeFile.Name, "build/engine").Replace("\\", "/");
             fileContents = fileContents.Replace($"###NOVELRT_ENGINE_SUBDIR###",
-                $"include_directories(\"{includePath}\")"+
-                $"\nadd_subdirectory(\"{path}\" \"{cmakePath}\")");
+                $"include_directories(\"{includePath}\")" +
+                $"\nadd_subdirectory(\"{path}\" \"{cmakePath}\")" +
+                $"\nset_target_properties(Engine PROPERTIES" +
+                $"\n\tMAP_IMPORTED_CONFIG_DEBUG RelWithDebInfo)");
 
             await File.WriteAllTextAsync(cmakeFile.FullName, fileContents);
         }
