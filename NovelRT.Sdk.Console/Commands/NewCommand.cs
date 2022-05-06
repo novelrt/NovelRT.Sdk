@@ -24,7 +24,8 @@ public class NewCommand : ICommandHandler
         Command.AddOption(EngineLocation);
         Command.AddOption(OutputDirectory);
         //Command.AddOption(NovelRTVersion);
-        Command.AddOption(LaunchCMakeConfigure);
+        Command.AddOption(ConfigureProject);
+        Command.AddOption(BuildProject);
         _verbose = false;
     }
 
@@ -51,8 +52,11 @@ public class NewCommand : ICommandHandler
     //        Arity = ArgumentArity.ExactlyOne
     //    };
 
-    public static Option<bool> LaunchCMakeConfigure { get; } = new(new[] { "-c", "--configure" }, () => false,
-        "configures cmake post-generation in a build folder.");
+    public static Option<bool> ConfigureProject { get; } = new(new[] { "-c", "--configure" }, () => false,
+        "configures CMake post-generation in a build folder.");
+
+    public static Option<bool> BuildProject { get; } = new(new[] { "-b", "--build" }, () => false,
+        "builds project via CMake after configuration.");
 
     public async Task<int> InvokeAsync(InvocationContext context)
     {
@@ -65,9 +69,13 @@ public class NewCommand : ICommandHandler
         string? engineLocation = context.ParseResult.GetValueForOption(EngineLocation);
         string? outputDirectory = context.ParseResult.GetValueForOption(OutputDirectory);
         string novelrtVersion = "";
-        bool? shouldConfigure = context.ParseResult.GetValueForOption(LaunchCMakeConfigure);
+        bool? shouldConfigure = context.ParseResult.GetValueForOption(ConfigureProject);
+        bool? shouldBuild = context.ParseResult.GetValueForOption(BuildProject);
         //var novelrtVersion = context.ParseResult.GetValueForOption(NovelRTVersion);
+
+        //Get definites
         bool willConfigure = (shouldConfigure != null) ? (bool)shouldConfigure : false;
+        bool willBuild = (shouldBuild != null) ? (bool)shouldBuild : false;
 
         if (!string.IsNullOrEmpty(engineLocation))
         {
@@ -166,28 +174,38 @@ public class NewCommand : ICommandHandler
             var project = await ProjectGenerator.GenerateFromSourceAsync(outputDirectory, _engineLocation);
             Log.Logger.Information("Successfully generated new NovelRT project!");
 
+            var buildPath = Path.GetFullPath(Path.Combine(outputDirectory, "build"));
+
+            //Run conan commands for engine
+            await ConanHandler.ConfigInstallAsync();
+            await ConanHandler.InstallAsync(_engineLocation, buildPath);
+
             if (willConfigure)
             {
-                var buildPath = Path.GetFullPath(Path.Combine(outputDirectory, "build"));
-                //Run conan commands for engine
-                await ConanHandler.ConfigInstallAsync();
-                await ConanHandler.InstallAsync(_engineLocation, buildPath, BuildType.Debug);
-
                 //Configure project + NovelRT
-                await ProjectBuilder.ConfigureAsync(outputDirectory, buildPath, BuildType.Debug, _fromSourceBuild);
-                await ProjectBuilder.BuildAsync(buildPath);
-                if (await ProjectBuilder.ConfirmEngineBuildSuccessful(buildPath, project))
+                await ProjectSourceBuilder.ConfigureAsync(outputDirectory, buildPath, BuildType.Debug, _fromSourceBuild);
+            }
+
+            if (willBuild)
+            {
+                if (!willConfigure)
                 {
-                    Log.Logger.Information("Successfully generated and built project!");
-                    return 0;
+                    Log.Logger.Warning("Warning - building without specifying configuration flag may cause issues during CMake configuration/building!");
                 }
-                else
+
+                await ProjectSourceBuilder.BuildAsync(buildPath, _verbose);
+
+                if (!await ProjectSourceBuilder.ConfirmEngineBuildSuccessful(buildPath, project))
                 {
                     Log.Logger.Error($"Sommething went wrong while trynig to build NovelRT and the new project.");
                     return -1;
-                }    
-
+                }
+                else
+                {
+                    Log.Logger.Information("Successfully generated and built project!");
+                }
             }
+
         }
         else
         {
@@ -197,20 +215,17 @@ public class NewCommand : ICommandHandler
             Log.Logger.Information($"Generating project in {outputDirectory} with NovelRT {novelrtVersion}");
 
             //Generate project
+
+            if (willConfigure)
+            { 
+            }
+
+            if (willBuild)
+            { 
+            }
         }
 
-        //    try
-        //    {
-        //        await ProjectGenerator.GenerateAsync(outputDirectory!, novelrtVersion!);
-        //    }
-        //    catch (IOException e)
-        //    {
-        //        Log.Error("Error: Project files already exist in this directory. Aborting.");
-        //        if (_verbose)
-        //            Log.Debug($"{e.Message}\n{e.StackTrace}");
-        //        return 1;
-        //    }
-        //}
+        
 
         //if (shouldConfigure)
         //{

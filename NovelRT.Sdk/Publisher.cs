@@ -23,7 +23,7 @@ public class Publisher
       
       //await ProjectGenerator.ConfigureAsync(projectDirectory, tempBuildDirectory, BuildType.Release);
 
-      await ProjectBuilder.BuildAsync(tempBuildDirectory);
+      //await ProjectBuilder.BuildAsync(tempBuildDirectory);
 
       Directory.Move(tempBuildDirectory, outputDirectory);
       Directory.Delete(tempBuildDirectory, true);

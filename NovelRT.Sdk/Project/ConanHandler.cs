@@ -31,11 +31,16 @@ namespace NovelRT.Sdk.Project
             proc.BeginOutputReadLine();
             //proc.BeginErrorReadLine();
             await proc.WaitForExitAsync();
+
+            if (proc.ExitCode != 0)
+            {
+                    
+            }
         }
 
-        public static async Task InstallAsync(string engineLocation, string projectOutputDir, BuildType buildType)
+        public static async Task InstallAsync(string engineLocation, string projectOutputDir)
         {
-            _selectedConfig = $"{await DeterminePlatformForConfigAsync()}";//{Enum.GetName(typeof(BuildType), buildType)}";
+            _selectedConfig = $"{await DeterminePlatformForConfigAsync()}";
 
             var args = $"install {engineLocation} -if {projectOutputDir} --build=missing -pr {_selectedConfig}";
 
