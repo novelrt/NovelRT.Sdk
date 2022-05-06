@@ -6,9 +6,14 @@ namespace NovelRT.Sdk;
 public class ProjectBuilder
 {
     private static bool _appBuiltProperly = false;
+    private static OperatingSystem _operatingSystem;
+    private static bool _verbose = false;
 
-    public static async Task BuildAsync(string projectBuildLocation)
+    public static async Task BuildAsync(string projectBuildLocation, bool verboseBuild)
     {
+        _operatingSystem = Environment.OSVersion;
+        _verbose = verboseBuild;
+
         var start = new ProcessStartInfo
         {
             FileName = "cmake",
@@ -19,8 +24,8 @@ public class ProjectBuilder
 
         var proc = new Process();
         proc.StartInfo = start;
-        proc.OutputDataReceived += new DataReceivedEventHandler((o, e) => SdkLog.Debug("{Data}", e.Data != null ? e.Data : ""));
-        proc.ErrorDataReceived += new DataReceivedEventHandler((o, e) => SdkLog.Error("{Data}", e.Data != null ? e.Data : ""));
+        proc.OutputDataReceived += new DataReceivedEventHandler(async (o, e) => await ParseBuildProgressAsync(e.Data));
+        proc.ErrorDataReceived += new DataReceivedEventHandler(async (o, e) => await ParseBuildErrorAsync(e.Data));
 
         SdkLog.Information("Building project...");
 
@@ -91,7 +96,6 @@ public class ProjectBuilder
         await proc.WaitForExitAsync();
     }
 
-
     private static async Task ParseHelloWorld(string? data)
     {
         if (!string.IsNullOrEmpty(data))
@@ -101,6 +105,47 @@ public class ProjectBuilder
             {
                 _appBuiltProperly = true;
             }
+        }
+    }
+
+    private static async Task ParseBuildProgressAsync(string? data)
+    {
+        if (!string.IsNullOrEmpty(data))
+        {
+            if (_verbose)
+            {
+                SdkLog.Debug($"{data}");
+            }
+            else
+            {
+                if (_operatingSystem.Platform == PlatformID.Win32NT)
+                {
+                    if (data.Contains(".dll") || data.Contains(".exe"))
+                    {
+                        var indexOne = data.LastIndexOf('\\') + 1;
+                        var length = data.Length - indexOne;
+                        var builtFile = data.Substring(indexOne + 1, length);
+                        SdkLog.Information($"Finished building {builtFile}");
+                    }
+                }
+                else
+                {
+                    if (data.Contains("%]"))
+                    {
+                        var indexOne = data.IndexOf(']');
+                        var progress = data.Substring(0, indexOne + 1);
+                        SdkLog.Information($"Building... {progress}");
+                    }
+                }
+            }
+        }
+    }
+
+    private static async Task ParseBuildErrorAsync(string? data)
+    {
+        if (!string.IsNullOrEmpty(data))
+        {
+            SdkLog.Error($"{data}");
         }
     }
 }
