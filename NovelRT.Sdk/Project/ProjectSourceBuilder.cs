@@ -35,7 +35,7 @@ namespace NovelRT.Sdk.Project
             await proc.WaitForExitAsync();
         }
 
-        public static async Task<bool> ConfirmEngineBuildSuccessful(string projectBuildLocation, string projectName)
+        public static async Task<bool> ConfirmBuildSuccessful(string projectBuildLocation, string projectName)
         {
             var appName = projectName;
             if (OperatingSystem.IsOSPlatform("windows"))

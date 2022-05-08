@@ -64,7 +64,10 @@ namespace NovelRT.Sdk
                     return "";
                 }
             }
-            return "";
+            else
+            {
+                return Path.GetFullPath($"{Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)}/NovelRT/Engine/{selected.tag_name}").Replace('\\', '/');
+            }
         }
 
         public static async Task<int> ListFoundVersions()

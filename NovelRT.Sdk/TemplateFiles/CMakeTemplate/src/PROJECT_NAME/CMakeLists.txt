@@ -1,6 +1,5 @@
 ﻿include(CopyDirectoryRaw)
-
-#find_package(novelrt ${###PROJECT_NAME###_NOVELRT_VERSION} REQUIRED)
+###NOVELRT_FIND_PACKAGE###
 
 set(SOURCES
     main.cpp
@@ -65,4 +64,3 @@ set_target_properties(App PROPERTIES OUTPUT_NAME "###PROJECT_NAME###")
 #endif()
 
 ###NOVELRT_ENGINE_SOURCE_CBP###
-

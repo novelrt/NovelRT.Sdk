@@ -122,36 +122,21 @@ public class NewCommand : ICommandHandler
             }
 
             Log.Logger.Debug("Confirmed engine location.");
-
-            try
-            {
-                Log.Logger.Information("Checking for required applications to build NovelRT...");
-                
-                //Check for CMake and Conan
-                await ProgramLocators.FindCMake();
-                await ProgramLocators.FindConan();
-
-
-            }
-            catch (Exception e)
-            {
-                Log.Logger.Error("Something went wrong while trying to check requirements for engine builds!");
-                Log.Logger.Error($"{e.Message}");
-                Log.Logger.Debug($"{e.StackTrace}");
-            }
         }
         else
         {
             try
             {
                 _fromSourceBuild = false;
-                engineLocation = await EngineSelector.SelectEngineVersion();
+                _engineLocation = await EngineSelector.SelectEngineVersion();
+                novelrtVersion = _engineLocation.Substring(_engineLocation.LastIndexOf('/') + 1);
             }
             catch (Exception e)
             {
                 Log.Logger.Error("Something went wrong while selecting a NovelRT version!");
                 Log.Logger.Error($"{e.Message}");
                 Log.Logger.Debug($"{e.StackTrace}");
+                return -1;
             }
         }
 
@@ -166,78 +151,93 @@ public class NewCommand : ICommandHandler
             outputDirectory = Path.GetFullPath(Environment.CurrentDirectory);
         }
 
+        string project = "";
+
         if (_fromSourceBuild)
         {
             Log.Logger.Information($"Generating project in {outputDirectory} using source build of NovelRT...");
-
             //Generate project with overrides for from-source builds.
-            var project = await ProjectGenerator.GenerateFromSourceAsync(outputDirectory, _engineLocation);
+            project = await ProjectGenerator.GenerateFromSourceAsync(outputDirectory, _engineLocation);
             Log.Logger.Information("Successfully generated new NovelRT project!");
-
-            var buildPath = Path.GetFullPath(Path.Combine(outputDirectory, "build"));
-
-            //Run conan commands for engine
-            await ConanHandler.ConfigInstallAsync();
-            await ConanHandler.InstallAsync(_engineLocation, buildPath);
-
-            if (willConfigure)
-            {
-                //Configure project + NovelRT
-                await ProjectSourceBuilder.ConfigureAsync(outputDirectory, buildPath, BuildType.Debug, _fromSourceBuild);
-            }
-
-            if (willBuild)
-            {
-                if (!willConfigure)
-                {
-                    Log.Logger.Warning("Warning - building without specifying configuration flag may cause issues during CMake configuration/building!");
-                }
-
-                await ProjectSourceBuilder.BuildAsync(buildPath, _verbose);
-
-                if (!await ProjectSourceBuilder.ConfirmEngineBuildSuccessful(buildPath, project))
-                {
-                    Log.Logger.Error($"Sommething went wrong while trynig to build NovelRT and the new project.");
-                    return -1;
-                }
-                else
-                {
-                    Log.Logger.Information("Successfully generated and built project!");
-                }
-            }
-
         }
         else
         {
-            //Parse NovelRT version from folder path.
-            novelrtVersion = Path.GetDirectoryName(engineLocation);
+            Version v = new Version(novelrtVersion.Substring(1,novelrtVersion.Length-1));
+            if (Globals.MinimumSupportedVersion > v)
+            {
+                Log.Logger.Warning($"Warning - NovelRT {novelrtVersion} is NOT supported. Configuration/building is disabled at this time.");
+                willConfigure = false;
+                willBuild = false;
+            }
 
             Log.Logger.Information($"Generating project in {outputDirectory} with NovelRT {novelrtVersion}");
 
             //Generate project
+            project = await ProjectGenerator.GenerateAsync(outputDirectory, _engineLocation);
+            Log.Logger.Information("Successfully generated new NovelRT project!");
+        }
 
-            if (willConfigure)
-            { 
+        var buildPath = Path.GetFullPath(Path.Combine(outputDirectory, "build"));
+
+        if (willConfigure || willBuild)
+        {
+            try
+            {
+                Log.Logger.Information("Checking for required applications to build your project...");
+
+                //Check for CMake (and Conan if source build)
+                await ProgramLocators.FindCMake();
+                if (_fromSourceBuild)
+                {
+                    await ProgramLocators.FindConan();
+                    //    //Run conan commands for engine
+                    await ConanHandler.ConfigInstallAsync();
+                    await ConanHandler.InstallAsync(_engineLocation, buildPath);
+                }
             }
-
-            if (willBuild)
-            { 
+            catch (Exception e)
+            {
+                Log.Logger.Error("Something went wrong while trying to find required applications!");
+                Log.Logger.Error($"{e.Message}");
+                Log.Logger.Debug($"{e.StackTrace}");
             }
         }
 
-        
+        //Configure Engine and Project
+        if (willConfigure)
+        {
+            //Configure project + NovelRT
+            if (_fromSourceBuild)
+            {
+                await ProjectSourceBuilder.ConfigureAsync(outputDirectory, buildPath, BuildType.Debug, true);
+            }
+            else
+            {
+                await ProjectSourceBuilder.ConfigureAsync(outputDirectory, buildPath, BuildType.Debug, false);
+            }
+        }
 
-        //if (shouldConfigure)
-        //{
-        //    System.Console.WriteLine("Configuring CMake");
+        //Build Engine and Project
+        if (willBuild)
+        {
+            if (!willConfigure)
+            {
+                Log.Logger.Warning("Warning - building without specifying configuration flag may cause issues during CMake configuration/building!");
+            }
 
-        //    await ProjectGenerator.ConfigureAsync(outputDirectory!, Path.Combine(outputDirectory!, "build"),
-        //        BuildType.Debug, _verbose);
-        //    await ProjectGenerator.ConfigureAsync(outputDirectory!, Path.Combine(outputDirectory!, "build"),
-        //        BuildType.Release, _verbose);
-        //}
+            await ProjectSourceBuilder.BuildAsync(buildPath, _verbose);
 
-        
+            if (!await ProjectSourceBuilder.ConfirmBuildSuccessful(buildPath, project))
+            {
+                Log.Logger.Error($"Sommething went wrong while trying to build your project.");
+                return -1;
+            }
+            else
+            {
+                Log.Logger.Information("Successfully generated and built project!");
+            }
+        }
+
         return 0;
     }
 }

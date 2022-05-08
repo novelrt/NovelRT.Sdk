@@ -1,5 +1,4 @@
 ﻿using static NovelRT.Sdk.Globals;
-using System.Diagnostics;
 
 namespace NovelRT.Sdk;
 
@@ -28,34 +27,24 @@ public static class ProjectGenerator
         return projectName;
     }
     
-    public static async Task<string> GenerateAsync(string newProjectPath, Version novelrtVersion)
+    public static async Task<string> GenerateAsync(string newProjectPath, string novelrtPath)
     {
-        string projectPath;
-        if (newProjectPath != null)
-            projectPath = newProjectPath.TrimStart();
-        else
-            projectPath = Directory.GetCurrentDirectory();
 
         var templateFilesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TemplateFiles");
-        var cmakeTemplatePath = Path.Combine(templateFilesPath , "CMakeTemplate");
-        
-        await CopyDirectoryAsync(cmakeTemplatePath, projectPath, true);
-        var projectName = new DirectoryInfo(projectPath).Name;
+        var cmakeTemplatePath = Path.Combine(templateFilesPath, "CMakeTemplate");
+
+        SdkLog.Debug($"Attempting to copy template to {newProjectPath}.");
+
+        await CopyDirectoryAsync(cmakeTemplatePath, newProjectPath, true);
+        var projectName = new DirectoryInfo(newProjectPath).Name;
         var projectDescription = $"{projectName} app";
         var projectVersionString = "0.0.1";
-        var novelrtVersionString = novelrtVersion.ToString(3);
+        //var novelrtVersionString = novelrtVersion.ToString(3);
 
-        await DeletePlaceholderFilesWithDirectoryLoggingAsync(new DirectoryInfo(projectPath), projectName);
-        await OverwriteCMakeTemplateVariableDataAsync(new DirectoryInfo(projectPath), projectName!, projectPath,
-            projectDescription, projectVersionString, novelrtVersionString);
-
-        var conanfilePath = projectPath + Path.DirectorySeparatorChar + "conanfile.py";
-        File.Copy(templateFilesPath + Path.DirectorySeparatorChar + "conanfile.py", conanfilePath);
+        await DeletePlaceholderFilesWithDirectoryLoggingAsync(new DirectoryInfo(newProjectPath), projectName);
+        await OverwriteCMakeTemplateVariableDataAsync(new DirectoryInfo(newProjectPath), projectName!, newProjectPath,
+            projectDescription, projectVersionString, novelrtPath);
         
-        SdkLog.Information($"Generating {conanfilePath}");
-        var conanfileContents = await File.ReadAllTextAsync(conanfilePath);
-        conanfileContents = ApplyProjectContextToFile(projectName!, projectDescription, projectVersionString, novelrtVersionString, conanfileContents);
-        await File.WriteAllTextAsync(conanfilePath, conanfileContents);
         return projectName;
     }
 
@@ -89,7 +78,7 @@ public static class ProjectGenerator
             await OverwriteCMakeTemplateVariableDataAsync(dir, projectName, projectPath, projectDescription, projectVersion, novelrtPath);
         }
 
-        var cmakeFiles = rootDir.GetFiles("*.txt");
+        var cmakeFiles = rootDir.GetFiles("*CMakeLists.txt");
         
         
         foreach (var cmakeFile in cmakeFiles)
@@ -98,23 +87,14 @@ public static class ProjectGenerator
 
             string fileContents = await File.ReadAllTextAsync(cmakeFile.FullName);
 
-            fileContents = ApplyProjectContextToFile(projectName, projectDescription, projectVersion, novelrtPath, fileContents);
-
-            var path = novelrtPath.Replace("\\", "/");
-            var includePath = Path.Combine(path, "include").Replace("\\", "/");
-            string cmakePath = cmakeFile.FullName.Replace(cmakeFile.Name, "build/engine").Replace("\\", "/");
-            fileContents = fileContents.Replace($"###NOVELRT_ENGINE_SUBDIR###",
-                $"include_directories(\"{includePath}\")" +
-                $"\nadd_subdirectory(\"{path}\" \"{cmakePath}\")" +
-                $"\nset_target_properties(Engine PROPERTIES" +
-                $"\n\tMAP_IMPORTED_CONFIG_DEBUG RelWithDebInfo)");
+            fileContents = ApplyProjectContextToFile(projectName, projectDescription, projectVersion, novelrtPath, fileContents, cmakeFile);
 
             await File.WriteAllTextAsync(cmakeFile.FullName, fileContents);
         }
     }
 
     private static string ApplyProjectContextToFile(string projectName, string projectDescription, string projectVersion,
-        string novelrtVersion, string fileContents, bool includeInterop = false)
+        string novelrtPath, string fileContents, FileInfo cmakeFile, bool includeInterop = false)
     {
         fileContents = fileContents.Replace("###PROJECT_NAME###", projectName);
         fileContents = fileContents.Replace("###PROJECT_DESCRIPTION###", projectDescription);
@@ -144,12 +124,41 @@ public static class ProjectGenerator
         else if (includeInterop)
         {
             fileContents = fileContents.Replace("###NOVELRT_ENGINE_LIB###", "NovelRT::Engine\nNovelRT::Interop");
-            fileContents = fileContents.Replace("###NOVELRT_ENGINE_SOURCE_CBP###", "");
+            fileContents = fileContents.Replace("###NOVELRT_ENGINE_SOURCE_CBP###",
+                "set_target_properties(NovelRT::Engine PROPERTIES" +
+                "\n\tMAP_IMPORTED_CONFIG_RELEASE MinSizeRel" +
+                "\n\tMAP_IMPORTED_CONFIG_DEBUG RelWithDebInfo)" +
+                "\nset_target_properties(NovelRT::Interop PROPERTIES" +
+                "\n\tMAP_IMPORTED_CONFIG_RELEASE MinSizeRel" +
+                "\n\tMAP_IMPORTED_CONFIG_DEBUG RelWithDebInfo" +
+                "\n)");
         }
         else
         {
             fileContents = fileContents.Replace("###NOVELRT_ENGINE_LIB###", "NovelRT::Engine");
-            fileContents = fileContents.Replace("###NOVELRT_ENGINE_SOURCE_CBP###", "");
+            fileContents = fileContents.Replace("###NOVELRT_ENGINE_SOURCE_CBP###",
+                "set_target_properties(NovelRT::Engine PROPERTIES" +
+                "\n\tMAP_IMPORTED_CONFIG_RELEASE MinSizeRel" +
+                "\n\tMAP_IMPORTED_CONFIG_DEBUG RelWithDebInfo" +
+                "\n)");
+        }
+
+        if (_fromSource)
+        {
+            var path = novelrtPath.Replace("\\", "/");
+            var includePath = Path.Combine(path, "include").Replace("\\", "/");
+            string cmakePath = cmakeFile.FullName.Replace(cmakeFile.Name, "build/engine").Replace("\\", "/");
+            fileContents = fileContents.Replace($"###NOVELRT_ENGINE_SUBDIR###",
+                "\ninclude(${CMAKE_BINARY_DIR}/conan_paths.cmake)" +
+                $"\ninclude_directories(\"{includePath}\")" +
+                $"\nadd_subdirectory(\"{path}\" \"{cmakePath}\")" +
+                $"\nset_target_properties(Engine PROPERTIES" +
+                $"\n\tMAP_IMPORTED_CONFIG_DEBUG RelWithDebInfo)");
+        }
+        else
+        {
+            fileContents = fileContents.Replace($"###NOVELRT_ENGINE_SUBDIR###", $"include({novelrtPath}/lib/NovelRT.cmake)"); 
+            fileContents = fileContents.Replace($"###NOVELRT_FIND_PACKAGE###", "");//fileContents.Replace($"###NOVELRT_FIND_PACKAGE###", "\nfind_package(NovelRT REQUIRED)");
         }
 
         //fileContents = fileContents.Replace("###NOVELRT_VERSION###", novelrtVersion);

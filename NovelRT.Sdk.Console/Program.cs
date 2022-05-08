@@ -18,7 +18,7 @@ rootCommand.AddCommand(PublishCommand.Command);
 
 if (Debugger.IsAttached)
 {
-    var arg = new string[] { "new", "-o", @"D:\test\app", "--engine-location", @"D:\test\NovelRT", "-c", "--verbose" };
+    var arg = new string[] { "new", "-o", @"D:\test\appNo", "-c", "--verbose" };
     var rc = rootCommand.Invoke(arg);
     Log.CloseAndFlush();
     return rc;
