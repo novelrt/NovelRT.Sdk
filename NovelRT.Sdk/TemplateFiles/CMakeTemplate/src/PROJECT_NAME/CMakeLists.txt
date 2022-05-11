@@ -58,9 +58,9 @@ target_link_libraries(App
 
 set_target_properties(App PROPERTIES OUTPUT_NAME "###PROJECT_NAME###")
 
-#copy_directory_raw(App "${GAME_RESOURCES}")
-#if(WIN32)
-#  copy_directory_raw(App "${CMAKE_SOURCE_DIR}/deps")
-#endif()
+copy_directory_raw(App "${GAME_RESOURCES}")
+if(WIN32)
+  copy_directory_raw(App "${CMAKE_SOURCE_DIR}/deps")
+endif()
 
 ###NOVELRT_ENGINE_SOURCE_CBP###

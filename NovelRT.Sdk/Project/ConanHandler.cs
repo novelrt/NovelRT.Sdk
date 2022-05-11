@@ -38,11 +38,11 @@ namespace NovelRT.Sdk.Project
             }
         }
 
-        public static async Task InstallAsync(string engineLocation, string projectOutputDir)
+        public static async Task InstallAsync(string conanfilePath, string projectOutputDir)
         {
             _selectedConfig = $"{await DeterminePlatformForConfigAsync()}";
 
-            var args = $"install {engineLocation} -if {projectOutputDir} --build=missing -pr {_selectedConfig}";
+            var args = $"install {conanfilePath} -if {projectOutputDir} --build=missing -pr {_selectedConfig}";
 
             var start = new ProcessStartInfo
             {
@@ -55,12 +55,61 @@ namespace NovelRT.Sdk.Project
 
             var proc = new Process();
             proc.StartInfo = start;
-            proc.OutputDataReceived += new DataReceivedEventHandler((o, e) => SdkLog.Debug(e.Data));
-            proc.ErrorDataReceived += new DataReceivedEventHandler((o, e) => SdkLog.Error(e.Data));
+            proc.OutputDataReceived += new DataReceivedEventHandler((o, e) => SdkLog.Debug(!string.IsNullOrEmpty(e.Data) ? e.Data : ""));
+            proc.ErrorDataReceived += new DataReceivedEventHandler((o, e) => SdkLog.Warning(!string.IsNullOrEmpty(e.Data) ? e.Data : ""));
 
             proc.Start();
             proc.BeginOutputReadLine();
-            //proc.BeginErrorReadLine();
+            proc.BeginErrorReadLine();
+            await proc.WaitForExitAsync();
+        }
+
+        public static async Task ConfigureAsync(string conanfilePath, string projectOutputDir)
+        {
+            var args = $"build {conanfilePath} --build-folder {projectOutputDir} --configure";
+
+            var start = new ProcessStartInfo
+            {
+                FileName = "conan",
+                Arguments = args,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false
+            };
+
+            var proc = new Process();
+            proc.StartInfo = start;
+            proc.OutputDataReceived += new DataReceivedEventHandler((o, e) => SdkLog.Debug(!string.IsNullOrEmpty(e.Data) ? e.Data : ""));
+            proc.ErrorDataReceived += new DataReceivedEventHandler((o, e) => SdkLog.Warning(!string.IsNullOrEmpty(e.Data) ? e.Data : ""));
+
+            proc.Start();
+            proc.BeginOutputReadLine();
+            proc.BeginErrorReadLine();
+            await proc.WaitForExitAsync();
+        }
+
+
+        public static async Task BuildAsync(string conanfilePath, string projectOutputDir)
+        {
+            var args = $"build {conanfilePath} --build-folder {projectOutputDir} --build";
+
+            var start = new ProcessStartInfo
+            {
+                FileName = "conan",
+                Arguments = args,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false
+            };
+
+            var proc = new Process();
+            proc.StartInfo = start;
+            proc.OutputDataReceived += new DataReceivedEventHandler((o, e) => SdkLog.Debug(!string.IsNullOrEmpty(e.Data) ? e.Data : ""));
+            proc.ErrorDataReceived += new DataReceivedEventHandler((o, e) => SdkLog.Warning(!string.IsNullOrEmpty(e.Data) ? e.Data : ""));
+
+            proc.Start();
+            proc.BeginOutputReadLine();
+            proc.BeginErrorReadLine();
             await proc.WaitForExitAsync();
         }
 

@@ -28,6 +28,7 @@ set(GAME_RESOURCES "${CMAKE_SOURCE_DIR}/Resources")
 
 
 include(${CMAKE_SOURCE_DIR}/cmake/CopyBuildProducts.cmake)
+include(${CMAKE_BINARY_DIR}/conan_paths.cmake)
 ###NOVELRT_ENGINE_SUBDIR###
 
 add_subdirectory(src)

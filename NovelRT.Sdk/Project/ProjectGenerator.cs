@@ -29,21 +29,50 @@ public static class ProjectGenerator
     
     public static async Task<string> GenerateAsync(string newProjectPath, string novelrtPath)
     {
-
+        SdkLog.Information($"Creating project...");
+        //Generate the template files path
         var templateFilesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TemplateFiles");
         var cmakeTemplatePath = Path.Combine(templateFilesPath, "CMakeTemplate");
 
-        SdkLog.Debug($"Attempting to copy template to {newProjectPath}.");
-
+        SdkLog.Debug($"Attempting to copy project template to {newProjectPath}.");
+        //Copy directories to project folder
         await CopyDirectoryAsync(cmakeTemplatePath, newProjectPath, true);
+
+        //Generate project metadata
         var projectName = new DirectoryInfo(newProjectPath).Name;
         var projectDescription = $"{projectName} app";
         var projectVersionString = "0.0.1";
         //var novelrtVersionString = novelrtVersion.ToString(3);
 
+        //Delete the placeholder files
         await DeletePlaceholderFilesWithDirectoryLoggingAsync(new DirectoryInfo(newProjectPath), projectName);
+
+        SdkLog.Information("Applying project metadata...");
+        //Overwrite project metadata in CMakeLists
         await OverwriteCMakeTemplateVariableDataAsync(new DirectoryInfo(newProjectPath), projectName!, newProjectPath,
             projectDescription, projectVersionString, novelrtPath);
+
+        SdkLog.Information("Generating conanfile.py...");
+        //Generate Conanfile.py for project
+        var conanfilePath = newProjectPath + "/conanfile.py";
+        File.Copy(templateFilesPath + "/conanfile.py", conanfilePath);
+
+        var conanfileContents = await File.ReadAllTextAsync(conanfilePath);
+        conanfileContents = await ApplyProjectContextToFile(projectName!, projectDescription, projectVersionString, novelrtPath, conanfileContents);
+        await File.WriteAllTextAsync(conanfilePath, conanfileContents);
+
+        SdkLog.Information("Copying prebuilt resources...");
+        //Assume not source build, so copy the resources over
+        var engineBinPath = Path.Combine(novelrtPath, "bin");
+        var resourcesPath = Path.Combine(engineBinPath, "Resources");
+        await CopyDirectoryAsync(resourcesPath, Path.Combine(newProjectPath, "Resources"), true, true);
+
+        //Copy dependencies from pre-built binaries for macOS/Windows
+        if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS())
+        {
+            SdkLog.Information("Copying dependencies...");
+            await CopyDirectoryAsync(engineBinPath, Path.Combine(newProjectPath, "deps"), false);
+        }
         
         return projectName;
     }
@@ -83,18 +112,18 @@ public static class ProjectGenerator
         
         foreach (var cmakeFile in cmakeFiles)
         {
-            SdkLog.Information($"Generating {cmakeFile}");
+            SdkLog.Debug($"Generating {cmakeFile}");
 
             string fileContents = await File.ReadAllTextAsync(cmakeFile.FullName);
 
-            fileContents = ApplyProjectContextToFile(projectName, projectDescription, projectVersion, novelrtPath, fileContents, cmakeFile);
+            fileContents = await ApplyProjectContextToFile(projectName, projectDescription, projectVersion, novelrtPath, fileContents, cmakeFile);
 
             await File.WriteAllTextAsync(cmakeFile.FullName, fileContents);
         }
     }
 
-    private static string ApplyProjectContextToFile(string projectName, string projectDescription, string projectVersion,
-        string novelrtPath, string fileContents, FileInfo cmakeFile, bool includeInterop = false)
+    private static async Task<string> ApplyProjectContextToFile(string projectName, string projectDescription, string projectVersion,
+        string novelrtPath, string fileContents, FileInfo cmakeFile = null, bool includeInterop = false)
     {
         fileContents = fileContents.Replace("###PROJECT_NAME###", projectName);
         fileContents = fileContents.Replace("###PROJECT_DESCRIPTION###", projectDescription);
@@ -149,7 +178,6 @@ public static class ProjectGenerator
             var includePath = Path.Combine(path, "include").Replace("\\", "/");
             string cmakePath = cmakeFile.FullName.Replace(cmakeFile.Name, "build/engine").Replace("\\", "/");
             fileContents = fileContents.Replace($"###NOVELRT_ENGINE_SUBDIR###",
-                "\ninclude(${CMAKE_BINARY_DIR}/conan_paths.cmake)" +
                 $"\ninclude_directories(\"{includePath}\")" +
                 $"\nadd_subdirectory(\"{path}\" \"{cmakePath}\")" +
                 $"\nset_target_properties(Engine PROPERTIES" +
@@ -157,15 +185,30 @@ public static class ProjectGenerator
         }
         else
         {
-            fileContents = fileContents.Replace($"###NOVELRT_ENGINE_SUBDIR###", $"include({novelrtPath}/lib/NovelRT.cmake)"); 
-            fileContents = fileContents.Replace($"###NOVELRT_FIND_PACKAGE###", "");//fileContents.Replace($"###NOVELRT_FIND_PACKAGE###", "\nfind_package(NovelRT REQUIRED)");
+            fileContents = fileContents.Replace($"###NOVELRT_ENGINE_SUBDIR###", $""); 
+            fileContents = fileContents.Replace($"###NOVELRT_FIND_PACKAGE###", "find_package(BZip2 REQUIRED)" +
+                "\nfind_package(flac REQUIRED)" +
+                "\nfind_package(Freetype REQUIRED)" +
+                "\nfind_package(glfw3 REQUIRED)" +
+                "\nfind_package(glm REQUIRED)" +
+                "\nfind_package(Microsoft.GSL REQUIRED)" +
+                "\nfind_package(Ogg REQUIRED)" +
+                "\nfind_package(OpenAL REQUIRED)" +
+                "\nfind_package(Opus REQUIRED)" +
+                "\nfind_package(PNG REQUIRED)" +
+                "\nfind_package(SndFile REQUIRED)" +
+                "\nfind_package(spdlog REQUIRED)" +
+                "\nfind_package(TBB REQUIRED)" +
+                "\nfind_package(Vorbis REQUIRED)" +
+                "\nfind_package(Vulkan REQUIRED)" +
+                $"\ninclude({novelrtPath}/lib/NovelRT.cmake)");
         }
 
         //fileContents = fileContents.Replace("###NOVELRT_VERSION###", novelrtVersion);
         return fileContents;
     }
 
-    private static async Task CopyDirectoryAsync(string sourceDir, string destinationDir, bool recursive)
+    private static async Task CopyDirectoryAsync(string sourceDir, string destinationDir, bool recursive, bool overwrite = false)
     {
         var dir = new DirectoryInfo(sourceDir);
         if (!dir.Exists)
@@ -179,9 +222,18 @@ public static class ProjectGenerator
         foreach (FileInfo file in dir.GetFiles())
         {
             string targetFilePath = Path.Combine(destinationDir, file.Name);
-            var copied = file.CopyTo(targetFilePath);
-            if(SdkLog != null)
+            try
+            {
+                var copied = file.CopyTo(targetFilePath, overwrite);
                 SdkLog.Debug($"Copied {copied.FullName}");
+            }
+            catch (Exception e)
+            {
+                SdkLog.Error("Could not copy file to target path properly!");
+                SdkLog.Error(e.Message);
+                SdkLog.Debug(e.StackTrace);
+                Environment.Exit(-1);
+            }
         }
 
         if (recursive)

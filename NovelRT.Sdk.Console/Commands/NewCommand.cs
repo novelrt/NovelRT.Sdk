@@ -187,13 +187,13 @@ public class NewCommand : ICommandHandler
 
                 //Check for CMake (and Conan if source build)
                 await ProgramLocators.FindCMake();
-                if (_fromSourceBuild)
-                {
+                //if (_fromSourceBuild)
+                //{
                     await ProgramLocators.FindConan();
                     //    //Run conan commands for engine
                     await ConanHandler.ConfigInstallAsync();
-                    await ConanHandler.InstallAsync(_engineLocation, buildPath);
-                }
+                    await ConanHandler.InstallAsync(outputDirectory, buildPath);
+                //}
             }
             catch (Exception e)
             {
@@ -206,37 +206,31 @@ public class NewCommand : ICommandHandler
         //Configure Engine and Project
         if (willConfigure)
         {
-            //Configure project + NovelRT
-            if (_fromSourceBuild)
-            {
-                await ProjectSourceBuilder.ConfigureAsync(outputDirectory, buildPath, BuildType.Debug, true);
-            }
-            else
-            {
-                await ProjectSourceBuilder.ConfigureAsync(outputDirectory, buildPath, BuildType.Debug, false);
-            }
+            //Configure project (+ NovelRT)
+            //await ProjectSourceBuilder.ConfigureAsync(outputDirectory, buildPath, BuildType.Debug, _fromSourceBuild);
+            await ConanHandler.ConfigureAsync(outputDirectory, buildPath);
         }
 
         //Build Engine and Project
         if (willBuild)
         {
-            if (!willConfigure)
-            {
-                Log.Logger.Warning("Warning - building without specifying configuration flag may cause issues during CMake configuration/building!");
-            }
+            //if (!willConfigure)
+            //{
+            //    Log.Logger.Warning("Warning - building without specifying configuration flag may cause issues during CMake configuration/building!");
+            //}
 
-            await ProjectSourceBuilder.BuildAsync(buildPath, _verbose);
+            await ConanHandler.BuildAsync(outputDirectory, buildPath);
+            //await ProjectSourceBuilder.BuildAsync(buildPath, _verbose);
 
             if (!await ProjectSourceBuilder.ConfirmBuildSuccessful(buildPath, project))
             {
                 Log.Logger.Error($"Sommething went wrong while trying to build your project.");
                 return -1;
             }
-            else
-            {
-                Log.Logger.Information("Successfully generated and built project!");
-            }
+            
         }
+
+        Log.Logger.Information("Successfully generated project!");
 
         return 0;
     }
