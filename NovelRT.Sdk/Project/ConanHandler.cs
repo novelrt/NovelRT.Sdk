@@ -222,7 +222,8 @@ namespace NovelRT.Sdk.Project
             }
         }
 
-        private static async Task<ProjectDefinition> ModifyProjectMetadata(string path, string? buildApp = null, string? buildAppArgs = null, string? outputDirectory = null, string? profile = null)
+        private static async Task<ProjectDefinition> ModifyProjectMetadata(string path, string? buildApp = null, string? buildAppArgs = null, 
+            string? lastConfig = null, string? outputDirectory = null, string? profile = null)
         {
             SdkLog.Debug("Gathering project metadata...");
             bool fileChanged = false;
@@ -248,6 +249,11 @@ namespace NovelRT.Sdk.Project
             if (!string.IsNullOrEmpty(buildAppArgs) && def.BuildAppArgs != buildAppArgs)
             {
                 def.BuildAppArgs = buildAppArgs;
+                fileChanged = true;
+            }
+            if (!string.IsNullOrEmpty(lastConfig) && def.LastBuildConfiguration != lastConfig)
+            {
+                def.LastBuildConfiguration = lastConfig;
                 fileChanged = true;
             }
             if (!string.IsNullOrEmpty(outputDirectory) && def.OutputDirectory != outputDirectory)
