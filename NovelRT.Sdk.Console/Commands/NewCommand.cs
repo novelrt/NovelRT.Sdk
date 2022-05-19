@@ -23,7 +23,7 @@ public class NewCommand : ICommandHandler
 
         Command.AddOption(EngineLocation);
         Command.AddOption(OutputDirectory);
-        //Command.AddOption(NovelRTVersion);
+        Command.AddOption(NovelRTVersion);
         Command.AddOption(ConfigureProject);
         Command.AddOption(BuildProject);
         _verbose = false;
@@ -44,13 +44,13 @@ public class NewCommand : ICommandHandler
         Arity = ArgumentArity.ExactlyOne
     };
 
-    //public static Option<Version> NovelRTVersion { get; } =
-    //    new(new[] { "-v", "--version" },
-    //        () => new Version(0, 0, 1),
-    //        "The NovelRT Engine version to use for this project. Assumes latest if not provided.")
-    //    {
-    //        Arity = ArgumentArity.ExactlyOne
-    //    };
+    public static Option<String> NovelRTVersion { get; } =
+        new(new[] { "--version" },
+            () => null,
+            "The NovelRT Engine version to use for this project in format 'vx.x.x'. Will prompt if not provided. Ignored if EngineLocation flag is specified.")
+        {
+            Arity = ArgumentArity.ExactlyOne
+        };
 
     public static Option<bool> ConfigureProject { get; } = new(new[] { "-c", "--configure" }, () => false,
         "configures CMake post-generation in a build folder.");
@@ -68,10 +68,21 @@ public class NewCommand : ICommandHandler
 
         string? engineLocation = context.ParseResult.GetValueForOption(EngineLocation);
         string? outputDirectory = context.ParseResult.GetValueForOption(OutputDirectory);
-        string novelrtVersion = "";
+        string? version = context.ParseResult.GetValueForOption(NovelRTVersion);
         bool? shouldConfigure = context.ParseResult.GetValueForOption(ConfigureProject);
         bool? shouldBuild = context.ParseResult.GetValueForOption(BuildProject);
-        //var novelrtVersion = context.ParseResult.GetValueForOption(NovelRTVersion);
+        
+        Version noVersion = new Version(0, 0, 0);
+        Version novelrtVersion = noVersion;
+        if (!string.IsNullOrEmpty(version))
+        { 
+            Version.TryParse(version.Substring(1), out novelrtVersion);
+            if (novelrtVersion == noVersion)
+            {
+                Log.Logger.Warning($"Warning - could not process version provided: {version}");
+                Log.Logger.Warning($"SDK will now prompt for a proper NovelRT version.");
+            }
+        }
 
         //Get definites
         bool willConfigure = (shouldConfigure != null) ? (bool)shouldConfigure : false;
@@ -128,8 +139,15 @@ public class NewCommand : ICommandHandler
             try
             {
                 _fromSourceBuild = false;
-                _engineLocation = await EngineSelector.SelectEngineVersion();
-                novelrtVersion = _engineLocation.Substring(_engineLocation.LastIndexOf('/') + 1);
+                
+                if (novelrtVersion == null || novelrtVersion == noVersion)
+                {
+                    _engineLocation = await EngineSelector.SelectEngineVersion();
+                }
+                else
+                {
+                    _engineLocation = await EngineSelector.ChooseSpecificEngineVersion(novelrtVersion);
+                }
             }
             catch (Exception e)
             {
@@ -156,14 +174,14 @@ public class NewCommand : ICommandHandler
         if (_fromSourceBuild)
         {
             Log.Logger.Information($"Generating project in {outputDirectory} using source build of NovelRT...");
+            
             //Generate project with overrides for from-source builds.
             project = await ProjectGenerator.GenerateFromSourceAsync(outputDirectory, _engineLocation);
             Log.Logger.Information("Successfully generated new NovelRT project!");
         }
         else
         {
-            Version v = new Version(novelrtVersion.Substring(1,novelrtVersion.Length-1));
-            if (Globals.MinimumSupportedVersion > v)
+            if (Globals.MinimumSupportedVersion > novelrtVersion)
             {
                 Log.Logger.Warning($"Warning - NovelRT {novelrtVersion} is NOT supported. Configuration/building is disabled at this time.");
                 willConfigure = false;
@@ -187,19 +205,18 @@ public class NewCommand : ICommandHandler
 
                 //Check for CMake (and Conan if source build)
                 await ProgramLocators.FindCMake();
-                //if (_fromSourceBuild)
-                //{
-                    await ProgramLocators.FindConan();
-                    //    //Run conan commands for engine
-                    await ConanHandler.ConfigInstallAsync();
-                    await ConanHandler.InstallAsync(outputDirectory, buildPath);
-                //}
+                await ProgramLocators.FindConan();
+
+                //Run conan commands for engine
+                await ConanHandler.ConfigInstallAsync();
+                await ConanHandler.InstallAsync(outputDirectory, buildPath);
             }
             catch (Exception e)
             {
                 Log.Logger.Error("Something went wrong while trying to find required applications!");
                 Log.Logger.Error($"{e.Message}");
                 Log.Logger.Debug($"{e.StackTrace}");
+                Environment.Exit(-1);
             }
         }
 
@@ -207,20 +224,13 @@ public class NewCommand : ICommandHandler
         if (willConfigure)
         {
             //Configure project (+ NovelRT)
-            //await ProjectSourceBuilder.ConfigureAsync(outputDirectory, buildPath, BuildType.Debug, _fromSourceBuild);
             await ConanHandler.ConfigureAsync(outputDirectory, buildPath);
         }
 
         //Build Engine and Project
         if (willBuild)
         {
-            //if (!willConfigure)
-            //{
-            //    Log.Logger.Warning("Warning - building without specifying configuration flag may cause issues during CMake configuration/building!");
-            //}
-
-            await ConanHandler.BuildAsync(outputDirectory, buildPath);
-            //await ProjectSourceBuilder.BuildAsync(buildPath, _verbose);
+            await ConanHandler.BuildAsync(outputDirectory, buildPath, _verbose);
 
             if (!await ProjectSourceBuilder.ConfirmBuildSuccessful(buildPath, project))
             {

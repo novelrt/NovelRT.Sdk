@@ -86,7 +86,7 @@ public static class ProjectGenerator
 
             foreach (var placeholderFile in placeholderFiles)
             {
-                SdkLog.Information($"Generating {placeholderFile.DirectoryName!.Replace("PROJECT_NAME", projectName)}");
+                SdkLog.Debug($"Generating {placeholderFile.DirectoryName!.Replace("PROJECT_NAME", projectName)}");
                 placeholderFile.Delete();
             }
         }
@@ -160,7 +160,11 @@ public static class ProjectGenerator
                 "\nset_target_properties(NovelRT::Interop PROPERTIES" +
                 "\n\tMAP_IMPORTED_CONFIG_RELEASE MinSizeRel" +
                 "\n\tMAP_IMPORTED_CONFIG_DEBUG RelWithDebInfo" +
-                "\n)");
+                "\n)" +
+                "\ncopy_directory_raw(App \"${GAME_RESOURCES}\")" +
+                "\nif (WIN32)" +
+                "\n\tcopy_directory_raw(App \"${CMAKE_SOURCE_DIR}/deps\")" +
+                "\nendif()");
         }
         else
         {
@@ -169,7 +173,11 @@ public static class ProjectGenerator
                 "set_target_properties(NovelRT::Engine PROPERTIES" +
                 "\n\tMAP_IMPORTED_CONFIG_RELEASE MinSizeRel" +
                 "\n\tMAP_IMPORTED_CONFIG_DEBUG RelWithDebInfo" +
-                "\n)");
+                "\n)" +
+                "\ncopy_directory_raw(App \"${GAME_RESOURCES}\")" +
+                "\nif (WIN32)" +
+                "\n\tcopy_directory_raw(App \"${CMAKE_SOURCE_DIR}/deps\")" +
+                "\nendif()");
         }
 
         if (_fromSource)

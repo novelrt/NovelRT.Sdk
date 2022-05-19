@@ -7,10 +7,12 @@ namespace NovelRT.Sdk.Project
     {
         private static List<string> _availableConfigs = new List<string>();
         private static string _selectedConfig = "";
+        private static bool _verbose = false;
+        private static Enums.Platform _currentPlatform = Enums.Platform.Unknown;
 
         public static async Task ConfigInstallAsync(string url = "https://github.com/NovelRT/ConanConfig.git")
         {
-            SdkLog.Information($"Downloading available Conan configurations from: {url}...");
+            SdkLog.Information($"\nDownloading available Conan configurations from: {url}...");
             var args = $"config install {url}";
 
             var start = new ProcessStartInfo
@@ -88,9 +90,10 @@ namespace NovelRT.Sdk.Project
             await proc.WaitForExitAsync();
         }
 
-
-        public static async Task BuildAsync(string conanfilePath, string projectOutputDir)
+        public static async Task BuildAsync(string conanfilePath, string projectOutputDir, bool verbose)
         {
+            _verbose = verbose;
+            _currentPlatform = Globals.DetermineCurrentPlatform();
             var args = $"build {conanfilePath} --build-folder {projectOutputDir} --build";
 
             var start = new ProcessStartInfo
@@ -104,8 +107,8 @@ namespace NovelRT.Sdk.Project
 
             var proc = new Process();
             proc.StartInfo = start;
-            proc.OutputDataReceived += new DataReceivedEventHandler((o, e) => SdkLog.Debug(!string.IsNullOrEmpty(e.Data) ? e.Data : ""));
-            proc.ErrorDataReceived += new DataReceivedEventHandler((o, e) => SdkLog.Warning(!string.IsNullOrEmpty(e.Data) ? e.Data : ""));
+            proc.OutputDataReceived += new DataReceivedEventHandler(async (o, e) => await ParseBuildOutput(e.Data));
+            proc.ErrorDataReceived += new DataReceivedEventHandler((o, e) => SdkLog.Debug(!string.IsNullOrEmpty(e.Data) ? e.Data : ""));
 
             proc.Start();
             proc.BeginOutputReadLine();
@@ -182,6 +185,39 @@ namespace NovelRT.Sdk.Project
             }
 
             return validConfigs[choice];
+        }
+
+        private static async Task ParseBuildOutput(string? data)
+        {
+            if (!string.IsNullOrEmpty(data))
+            {
+                if (_verbose)
+                {
+                    SdkLog.Debug($"{data}");
+                }
+                else
+                {
+                    if (_currentPlatform == Enums.Platform.Win32)
+                    {
+                        if (data.Contains(".dll") || data.Contains(".exe"))
+                        {
+                            var indexOne = data.LastIndexOf('\\') + 1;
+                            var length = data.Length - indexOne;
+                            var builtFile = data.Substring(indexOne, length);
+                            SdkLog.Information($"Finished building {builtFile}");
+                        }
+                    }
+                    else
+                    {
+                        if (data.Contains("%]"))
+                        {
+                            var indexOne = data.IndexOf(']');
+                            var progress = data.Substring(0, indexOne + 1);
+                            SdkLog.Information($"Building... {progress}");
+                        }
+                    }
+                }
+            }
         }
     }
 }

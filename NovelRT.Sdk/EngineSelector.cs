@@ -13,6 +13,8 @@ namespace NovelRT.Sdk
         private static RestClient _client = new RestClient()
             .AddDefaultHeader(KnownHeaders.Accept, "application/vnd.github.v3+json");
 
+        private static Enums.Platform _currentPlatform = Enums.Platform.Unknown;
+
         public static async Task<string> SelectEngineVersion()
         {
             int inc = 1;
@@ -30,7 +32,7 @@ namespace NovelRT.Sdk
 
             while (choice == 0)
             {
-                SdkLog.Information("Select a version and press enter (Q to quit): ");
+                SdkLog.Information("\nSelect a version and press enter (Q to quit): ");
                 string selection = Console.ReadLine();
                 if (!int.TryParse(selection, out choice) || choice > releases.Count)
                 {
@@ -53,7 +55,7 @@ namespace NovelRT.Sdk
             var location = "";
             if (!await CheckIfVersionDownloaded(selected.tag_name))
             {
-                location = await DownloadRelease(await DetermineReleaseForPlatform(selected.assets, Enums.Platform.Win32));
+                location = await DownloadRelease(await DetermineReleaseForPlatform(selected.assets, Globals.DetermineCurrentPlatform()));
                 if (!string.IsNullOrEmpty(location))
                 {
                     return await ExtractRelease(selected.tag_name, location);
@@ -68,6 +70,35 @@ namespace NovelRT.Sdk
             {
                 return Path.GetFullPath($"{Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)}/NovelRT/Engine/{selected.tag_name}").Replace('\\', '/');
             }
+        }
+
+        public static async Task<string> ChooseSpecificEngineVersion(Version version)
+        {
+            string location = "";
+            SdkLog.Information($"Retrieving v{version.ToString()} from NovelRT releases...\n");
+            var results = await GetReleases();
+            foreach (Release release in results)
+            {
+                Version v = Version.Parse(release.tag_name.Substring(1));
+                
+                if (v < Globals.MinimumSupportedVersion) break;
+
+                if (v == version)
+                {
+                    if (await CheckIfVersionDownloaded(release.tag_name))
+                    {
+                        return Path.GetFullPath($"{Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)}/NovelRT/Engine/{release.tag_name}").Replace("\\", "/");
+                    }
+                    else
+                    {
+                        var temp = await DownloadRelease(await DetermineReleaseForPlatform(release.assets, Globals.DetermineCurrentPlatform()));
+                        location = await ExtractRelease(release.tag_name, temp);
+                        return location;
+                    }
+                }
+            }
+
+            throw new InvalidOperationException($"Version 'v{version.ToString()}' did not match any of the available releases!");
         }
 
         public static async Task<int> ListFoundVersions()
@@ -110,6 +141,7 @@ namespace NovelRT.Sdk
             SdkLog.Debug($"NovelRT {tag} exists at {defaultPath}");
             return true;
         }
+
         private static async Task<ReleaseAsset> DetermineReleaseForPlatform(List<ReleaseAsset> assets, Enums.Platform platform)
         {
             string os = "";
