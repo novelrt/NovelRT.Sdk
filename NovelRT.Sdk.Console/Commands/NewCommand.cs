@@ -177,7 +177,6 @@ public class NewCommand : ICommandHandler
             
             //Generate project with overrides for from-source builds.
             project = await ProjectGenerator.GenerateFromSourceAsync(outputDirectory, _engineLocation);
-            Log.Logger.Information("Successfully generated new NovelRT project!");
         }
         else
         {
@@ -192,7 +191,16 @@ public class NewCommand : ICommandHandler
 
             //Generate project
             project = await ProjectGenerator.GenerateAsync(outputDirectory, _engineLocation);
+            }
+
+        if (!string.IsNullOrEmpty(project))
+        {
             Log.Logger.Information("Successfully generated new NovelRT project!");
+        }
+        else
+        {
+            Log.Logger.Error("Something went wrogn while creating your new project.");
+            return -1;
         }
 
         var buildPath = Path.GetFullPath(Path.Combine(outputDirectory, "build"));

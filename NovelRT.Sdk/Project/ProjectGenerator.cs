@@ -1,4 +1,5 @@
-﻿using static NovelRT.Sdk.Globals;
+﻿using System.Text.Json;
+using static NovelRT.Sdk.Globals;
 
 namespace NovelRT.Sdk;
 
@@ -23,6 +24,8 @@ public static class ProjectGenerator
         await DeletePlaceholderFilesWithDirectoryLoggingAsync(new DirectoryInfo(newProjectPath), projectName);
         await OverwriteCMakeTemplateVariableDataAsync(new DirectoryInfo(newProjectPath), projectName!, newProjectPath,
             projectDescription, projectVersionString, novelrtPath);
+
+        await CreateProjectDefinition(projectName, projectVersionString, newProjectPath, novelrtPath);
 
         return projectName;
     }
@@ -73,7 +76,9 @@ public static class ProjectGenerator
             SdkLog.Information("Copying dependencies...");
             await CopyDirectoryAsync(engineBinPath, Path.Combine(newProjectPath, "deps"), false);
         }
-        
+
+        await CreateProjectDefinition(projectName, projectVersionString, newProjectPath, novelrtPath);
+
         return projectName;
     }
 
@@ -251,6 +256,39 @@ public static class ProjectGenerator
                 string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
                 await CopyDirectoryAsync(subDir.FullName, newDestinationDir, true);
             }
+        }
+    }
+
+    private static async Task CreateProjectDefinition(string projectName, string versionString, string projectPath, string enginePath)
+    {
+        Models.Project projectDefinition = new Models.Project();
+        projectDefinition.Name = projectName;
+        projectDefinition.Version = versionString;
+        projectDefinition.BuildApp = "";
+        projectDefinition.BuildAppArgs = "";
+        projectDefinition.LastBuildConfiguration = "";
+        projectDefinition.DependencyProfile = "";
+        projectDefinition.ProjectLocation = projectPath;
+        projectDefinition.EngineLocation = enginePath;
+
+        try
+        {
+            var projectFile = JsonSerializer.Serialize(projectDefinition);
+            if (!string.IsNullOrEmpty(projectFile))
+            {
+                File.WriteAllText(Path.Combine(projectPath, "project.json"), projectFile);
+                SdkLog.Information("Wrote project file successfully!");
+            }
+            else
+            {
+                throw new InvalidOperationException($"Could not write project file! The definition was empty upon writing.");
+            }
+        }
+        catch (Exception e)
+        {
+            SdkLog.Error("Something went wrong while selecting a NovelRT version!");
+            SdkLog.Error($"{e.Message}");
+            SdkLog.Debug($"{e.StackTrace}");
         }
     }
 }

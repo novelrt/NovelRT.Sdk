@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-
-namespace NovelRT.Sdk.Models
+﻿namespace NovelRT.Sdk.Models
 {
     public class Release
     {
