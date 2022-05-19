@@ -5,7 +5,6 @@ using Serilog.Events;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 
-
 namespace NovelRT.Sdk.Console;
 
 public class NewCommand : ICommandHandler

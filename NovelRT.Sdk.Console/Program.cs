@@ -1,6 +1,4 @@
-﻿// See https://aka.ms/new-console-template for more information
-
-using System.CommandLine;
+﻿using System.CommandLine;
 using System.Diagnostics;
 using NovelRT.Sdk;
 using NovelRT.Sdk.Console;
@@ -14,7 +12,7 @@ var rootCommand = new RootCommand
 };
 rootCommand.AddGlobalOption(GlobalOptions.VerboseMode);
 rootCommand.AddCommand(NewCommand.Command);
-rootCommand.AddCommand(PublishCommand.Command);
+rootCommand.AddCommand(BuildCommand.Command);
 
 if (Debugger.IsAttached)
 {
