@@ -54,7 +54,7 @@ class ###PROJECT_NAME###Conan(ConanFile):
         if self.options.engineBuild:
             cmake.definitions["NOVELRT_BUILD_SAMPLES"] = "Off"
             cmake.definitions["NOVELRT_BUILD_DOCUMENTATION"] = "Off"
-        cmake.configure()
+        cmake.configure(args=["--no-warn-unused-cli"])
         return cmake
 
     def build(self):
