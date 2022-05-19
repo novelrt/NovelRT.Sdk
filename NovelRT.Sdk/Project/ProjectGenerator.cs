@@ -261,7 +261,7 @@ public static class ProjectGenerator
 
     private static async Task CreateProjectDefinition(string projectName, string versionString, string projectPath, string enginePath)
     {
-        Models.Project projectDefinition = new Models.Project();
+        Models.ProjectDefinition projectDefinition = new Models.ProjectDefinition();
         projectDefinition.Name = projectName;
         projectDefinition.Version = versionString;
         projectDefinition.BuildApp = "";
@@ -273,7 +273,7 @@ public static class ProjectGenerator
 
         try
         {
-            var projectFile = JsonSerializer.Serialize(projectDefinition);
+            var projectFile = JsonSerializer.Serialize(projectDefinition, new JsonSerializerOptions { WriteIndented = true });
             if (!string.IsNullOrEmpty(projectFile))
             {
                 File.WriteAllText(Path.Combine(projectPath, "project.json"), projectFile);

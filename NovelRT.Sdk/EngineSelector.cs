@@ -32,15 +32,17 @@ namespace NovelRT.Sdk
 
             while (choice == 0)
             {
-                SdkLog.Information("\nSelect a version and press enter (Q to quit): ");
+                Console.WriteLine("\nSelect a version and press enter (Q to quit): ");
                 string selection = Console.ReadLine();
-                if (!int.TryParse(selection, out choice) || choice > releases.Count)
+
+                if (string.IsNullOrWhiteSpace(selection) || !int.TryParse(selection, out choice) || choice > releases.Count)
                 {
                     if (selection.Contains('Q') || selection.Contains('q'))
                     {
                         SdkLog.Information("Exiting...");
                         Environment.Exit(0);
                     }
+                    
                     SdkLog.Error("Invalid selection - please try again.\n");
                     choice = 0;
 

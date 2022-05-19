@@ -1,5 +1,7 @@
 ﻿using static NovelRT.Sdk.Globals;
 using System.Diagnostics;
+using NovelRT.Sdk.Models;
+using System.Text.Json;
 
 namespace NovelRT.Sdk.Project
 {
@@ -27,23 +29,18 @@ namespace NovelRT.Sdk.Project
             var proc = new Process();
             proc.StartInfo = start;
             proc.OutputDataReceived += new DataReceivedEventHandler(async (o, e) => await ParseConfigInstallOutput(e.Data));
-            proc.ErrorDataReceived += new DataReceivedEventHandler((o, e) => SdkLog.Error(e.Data));
 
             proc.Start();
             proc.BeginOutputReadLine();
-            //proc.BeginErrorReadLine();
             await proc.WaitForExitAsync();
-
-            if (proc.ExitCode != 0)
-            {
-                    
-            }
         }
 
         public static async Task InstallAsync(string conanfilePath, string projectOutputDir)
         {
             _selectedConfig = $"{await DeterminePlatformForConfigAsync()}";
+            SdkLog.Information("Updating dependencies...");
 
+            await ModifyProjectMetadata(conanfilePath, outputDirectory: projectOutputDir, profile: _selectedConfig);
             var args = $"install {conanfilePath} -if {projectOutputDir} --build=missing -pr {_selectedConfig}";
 
             var start = new ProcessStartInfo
@@ -68,6 +65,8 @@ namespace NovelRT.Sdk.Project
 
         public static async Task ConfigureAsync(string conanfilePath, string projectOutputDir)
         {
+            SdkLog.Information("Configuring project...");
+            await ModifyProjectMetadata(conanfilePath, outputDirectory: projectOutputDir, buildApp: "conan");
             var args = $"build {conanfilePath} --build-folder {projectOutputDir} --configure";
 
             var start = new ProcessStartInfo
@@ -92,10 +91,13 @@ namespace NovelRT.Sdk.Project
 
         public static async Task BuildAsync(string conanfilePath, string projectOutputDir, bool verbose)
         {
+            
+            SdkLog.Information("Building project...");
             _verbose = verbose;
             _currentPlatform = Globals.DetermineCurrentPlatform();
             var args = $"build {conanfilePath} --build-folder {projectOutputDir} --build";
-
+            await ModifyProjectMetadata(conanfilePath, outputDirectory: projectOutputDir, buildApp: "conan", buildAppArgs: args);
+            
             var start = new ProcessStartInfo
             {
                 FileName = "conan",
@@ -218,6 +220,53 @@ namespace NovelRT.Sdk.Project
                     }
                 }
             }
+        }
+
+        private static async Task<ProjectDefinition> ModifyProjectMetadata(string path, string? buildApp = null, string? buildAppArgs = null, string? outputDirectory = null, string? profile = null)
+        {
+            SdkLog.Debug("Gathering project metadata...");
+            bool fileChanged = false;
+
+            var projectFile = Path.Combine(path, "project.json");
+            if (!File.Exists(projectFile))
+            {
+                throw new FileNotFoundException("Could not find project.json in provided directory! Is this a proper NovelRT SDK project?");
+            }
+            string jsonText = File.ReadAllText(projectFile);
+            ProjectDefinition? def = JsonSerializer.Deserialize<ProjectDefinition>(jsonText);
+            
+            if (def == null)
+            {
+                throw new InvalidDataException("Could not deserialize project.json!");
+            }
+
+            if (!string.IsNullOrEmpty(buildApp) && def.BuildApp != buildApp)
+            {
+                def.BuildApp = buildApp;
+                fileChanged = true;
+            }
+            if (!string.IsNullOrEmpty(buildAppArgs) && def.BuildAppArgs != buildAppArgs)
+            {
+                def.BuildAppArgs = buildAppArgs;
+                fileChanged = true;
+            }
+            if (!string.IsNullOrEmpty(outputDirectory) && def.OutputDirectory != outputDirectory)
+            {
+                def.OutputDirectory = outputDirectory;
+                fileChanged = true;
+            }
+            if (!string.IsNullOrEmpty(profile) && def.DependencyProfile != profile)
+            {
+                def.DependencyProfile = profile;
+                fileChanged = true;
+            }
+
+            if (fileChanged)
+            { 
+                File.WriteAllText(projectFile, JsonSerializer.Serialize(def, new JsonSerializerOptions { WriteIndented = true }));
+            }
+
+            return def;
         }
     }
 }

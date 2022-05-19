@@ -143,6 +143,7 @@ public class NewCommand : ICommandHandler
                 if (novelrtVersion == null || novelrtVersion == noVersion)
                 {
                     _engineLocation = await EngineSelector.SelectEngineVersion();
+                    Version.TryParse(_engineLocation.Substring(_engineLocation.LastIndexOf('v')+1), out novelrtVersion);
                 }
                 else
                 {
