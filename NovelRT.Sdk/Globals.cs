@@ -16,6 +16,23 @@ namespace NovelRT.Sdk
             applyThemeToRedirectedOutput: true)
             .MinimumLevel.ControlledBy(Verbosity).CreateLogger();
 
+        public static Enums.Platform DetermineCurrentPlatform() 
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                return Enums.Platform.Win32;
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                return Enums.Platform.macOS;
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                return Enums.Platform.Linux;
+            }
+            else
+                return Enums.Platform.Unknown;
+        }
         
     }
 }
